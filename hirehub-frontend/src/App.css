@@ -1,0 +1,217 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  cursor: default;
+}
+
+a, button, select, [role="button"], label[for] {
+  cursor: pointer;
+}
+
+input, textarea {
+  cursor: text;
+}
+
+body {
+  background: #0a0a14;
+  color: #e8e0d0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a14, #13131f);
+}
+
+.login-container h1 {
+  font-size: 36px;
+  color: #c9a84c;
+  margin-bottom: 8px;
+  letter-spacing: 3px;
+  font-weight: 700;
+}
+
+.login-container p {
+  color: #666;
+  margin-bottom: 40px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.login-container form {
+  background: #13131f;
+  border: 1px solid #2a2a3e;
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: #0f0f1a;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  color: #e8e0d0;
+  font-size: 14px;
+}
+
+input::placeholder {
+  color: #666;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #c9a84c;
+  color: #0a0a14;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.app-container {
+  min-height: 100vh;
+  background: #0a0a14;
+}
+
+header {
+  background: #0d0d1a;
+  border-bottom: 1px solid #1e1e30;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  color: #c9a84c;
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+header div {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 14px;
+}
+
+header button {
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+main {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+main h2 {
+  margin-bottom: 20px;
+  color: #e8e0d0;
+  font-size: 20px;
+}
+
+main p {
+  color: #888;
+}
+
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.job-card {
+  background: #13131f;
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s;
+}
+
+.job-card:hover {
+  border-color: #c9a84c;
+}
+
+.job-card h3 {
+  color: #e8e0d0;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.company {
+  color: #c9a84c;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.location {
+  color: #888;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.salary {
+  color: #c9a84c;
+  font-weight: 600;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: #0f0f1a;
+  color: #c9a84c;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  border: 1px solid #2a2a3e;
+}
+select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+
+  background-color: #0f0f1a !important;
+
+  /* REMOVE any previous background-image */
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23c9a84c' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>") !important;
+
+  background-repeat: no-repeat !important;
+  background-position: right 20px center !important;
+  background-size: 14px !important;
+
+  padding-right: 55px !important;
+
+  
+}

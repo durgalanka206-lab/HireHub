@@ -1,0 +1,118 @@
+{
+  "info": {
+    "name": "HireHub API",
+    "_postman_id": "hirehub-api-v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "jobId",   "value": "PASTE_JOB_ID_HERE" },
+    { "key": "appId",   "value": "PASTE_APP_ID_HERE" }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "API Status",
+          "request": { "method": "GET", "url": "{{baseUrl}}/" }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Get All Jobs",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs" }
+        },
+        {
+          "name": "Get Jobs - Full-time only",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs?type=Full-time" }
+        },
+        {
+          "name": "Get Jobs - Remote only",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs?location=Remote" }
+        },
+        {
+          "name": "Get Jobs - Search keyword",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs?search=python" }
+        },
+        {
+          "name": "Get Single Job",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs/{{jobId}}" }
+        },
+        {
+          "name": "Create New Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/jobs",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"React Developer\",\n  \"company\": \"Google\",\n  \"location\": \"Remote\",\n  \"type\": \"Full-time\",\n  \"salary\": \"$120K – $150K\",\n  \"logo\": \"G\",\n  \"color\": \"#4285F4\",\n  \"tags\": [\"React\", \"JavaScript\", \"CSS\", \"HTML\", \"Git\"],\n  \"desc\": \"Build world-class React apps.\",\n  \"requirements\": [\"3+ years React\", \"JavaScript expert\"],\n  \"posted\": \"Just now\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Job",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"salary\": \"$130K – $160K\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Job",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/jobs/{{jobId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Submit Application (with PDF)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/applications",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "jobId",          "value": "{{jobId}}",              "type": "text" },
+                { "key": "candidateName",  "value": "Lanka Durga",            "type": "text" },
+                { "key": "candidateEmail", "value": "durgalanka206@gmail.com","type": "text" },
+                { "key": "skills",         "value": "Java,Python,SQL,HTML,CSS,JavaScript,Git,REST API,NLP", "type": "text" },
+                { "key": "matchPercent",   "value": "80",                     "type": "text" },
+                { "key": "coverLetter",    "value": "Hi team, excited to apply!", "type": "text" },
+                { "key": "resume",         "value": "",                       "type": "file" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Applications",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/applications" }
+        },
+        {
+          "name": "Get Single Application",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/applications/{{appId}}" }
+        },
+        {
+          "name": "Update Application Status",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/applications/{{appId}}/status",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"shortlisted\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Application",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/applications/{{appId}}" }
+        }
+      ]
+    }
+  ]
+}
