@@ -1,22 +1,57 @@
-# HireHub
+# HireHub Backend
 
-HireHub is a job portal web application built using MERN stack.
+Backend API for HireHub Job Portal built using the MERN stack.
 
 ## Features
+
 - User Authentication
-- Job Listings
+- JWT Authorization
+- Job Management
 - Apply for Jobs
 - Admin Dashboard
-- Responsive UI
+- MongoDB Integration
+- REST API Architecture
 
-## Technologies Used
-- MongoDB
-- Express.js
-- React.js
+## Tech Stack
+
 - Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- JWT
+- bcrypt
 
-## Live Demo
-https://hirehub-silk.vercel.app
+## Installation
 
-## GitHub Repository
-https://github.com/durgalanka206-lab
+```bash
+git clone <repo-url>
+cd hirehub-backend
+npm install
+npm start
+```
+
+## Environment Variables
+
+Create a .env file:
+
+```env
+MONGO_URI=your_mongodb_connection
+JWT_SECRET=your_secret_key
+PORT=5000
+```
+
+## Project Structure
+
+```text
+config/
+models/
+routes/
+services/
+uploads/
+```
+
+## Author
+
+Durga Lanka
+
+GitHub: https://github.com/durgalanka206-lab
