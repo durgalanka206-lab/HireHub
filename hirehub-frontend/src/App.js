@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-const API = "https://hirehub-backend-83ko.onrender.com/api";
+const API = "https://hirehub-dx1z.onrender.com/api";
 
 const SKILL_KEYWORDS = [
   "java","python","javascript","typescript","react","angular","vue","node","nodejs",
