@@ -112,12 +112,12 @@ router.get("/google", passport.authenticate("google", { scope: ["profile", "emai
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: `${process.env.CLIENT_URL || "http://localhost:3000"}/login?error=google_auth_failed`,
+    failureRedirect: `${process.env.CLIENT_URL || "https://hirehub-silk.vercel.app"}/login?error=google_auth_failed`,
     session: false,
   }),
   (req, res) => {
     const token = signToken(req.user._id);
-    res.redirect(`${process.env.CLIENT_URL || "http://localhost:3000"}/auth/google-success?token=${token}`);
+    res.redirect(`${process.env.CLIENT_URL || "https://hirehub-silk.vercel.app"}/auth/google-success?token=${token}`);
   }
 );
 

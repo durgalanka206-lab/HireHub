@@ -13,7 +13,7 @@ const app = express();
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
 // Use CLIENT_URL env var — never hardcode localhost in production
-const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+const clientUrl = process.env.CLIENT_URL || "https://hirehub-silk.vercel.app";
 
 app.use(cors({
   origin: clientUrl,
@@ -41,10 +41,13 @@ app.use(passport.session());
 const authRoutes        = require("./routes/auth");
 const jobRoutes         = require("./routes/jobs");
 const applicationRoutes = require("./routes/applications");
+const contactRoutes     = require("./routes/contact");
 
 app.use("/api/auth",         authRoutes);
 app.use("/api/jobs",         jobRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/contact",      contactRoutes);
+
 
 app.get("/", (req, res) => {
   res.json({ message: "✅ HireHub API v2.0 running", env: process.env.NODE_ENV || "development" });
