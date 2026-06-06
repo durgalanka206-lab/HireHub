@@ -56,7 +56,7 @@ router.delete("/:id", protect, adminOnly, async (req, res) => {
 });
 
 
-// ── ONE-TIME SETUP ROUTES (no auth needed for Railway seed) ──
+// ── ONE-TIME SETUP ROUTES (no auth needed for seed) ──
 router.get("/seed-now", async (req, res) => {
   try {
     const User = require("../models/User");

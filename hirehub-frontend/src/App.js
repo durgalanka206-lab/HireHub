@@ -1437,7 +1437,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
                         <div>
                           <p style={{ margin:"0 0 10px", fontSize:10, color:"#2a2a4a", textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>Resume</p>
                           {selected.resumeFilename ? (
-                            <a href={`http://localhost:5000/uploads/${selected.resumeFilename}`} target="_blank" rel="noreferrer"
+                            <a href={`${API.replace('/api', '')}/uploads/${selected.resumeFilename}`} target="_blank" rel="noreferrer"
                               style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(201,168,76,.06)", border:"1px solid rgba(201,168,76,.18)", borderRadius:9, padding:"10px 12px", textDecoration:"none", transition:"all .2s" }}
                               onMouseOver={e => e.currentTarget.style.borderColor="#c9a84c"}
                               onMouseOut={e => e.currentTarget.style.borderColor="rgba(201,168,76,.18)"}>
