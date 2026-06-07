@@ -1,4 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import AuthPage from "./pages/AuthPage";
+import SuccessPage from "./pages/SuccessPage";
+import JobCard from "./components/JobCard";
+import { S, PasswordInput, PasswordStrength, ConfirmModal } from "./components/UI";
 
 const API = "https://hirehub-dx1z.onrender.com/api";
 
@@ -40,547 +45,6 @@ const statusStyles = {
   shortlisted: { bg:"rgba(74,222,128,.12)",  color:"#4ade80", dot:"#4ade80", label:"Shortlisted" },
   rejected:    { bg:"rgba(248,113,113,.12)", color:"#f87171", dot:"#f87171", label:"Rejected" },
 };
-
-const S = {
-  app:        { minHeight:"100vh", background:"#0a0a14", color:"#e8e0d0", fontFamily:"'DM Sans',sans-serif" },
-  card:       { background:"#13131f", border:"1px solid #2a2a3e", borderRadius:14 },
-  input:      { width:"100%", background:"#0f0f1a", border:"1px solid #2a2a3e", borderRadius:8, padding:"11px 14px", color:"#e8e0d0", fontSize:14, outline:"none", boxSizing:"border-box" },
-  btn:        { background:"linear-gradient(135deg,#c9a84c,#a07830)", color:"#0a0a14", border:"none", borderRadius:8, padding:"11px 22px", fontWeight:700, cursor:"pointer", fontSize:14, letterSpacing:0.5, fontFamily:"'DM Sans',sans-serif" },
-  btnOutline: { background:"transparent", color:"#c9a84c", border:"1px solid #c9a84c", borderRadius:8, padding:"10px 22px", fontWeight:600, cursor:"pointer", fontSize:14, fontFamily:"'DM Sans',sans-serif" },
-  label:      { fontSize:12, color:"#888", fontWeight:600, letterSpacing:1, textTransform:"uppercase", marginBottom:6, display:"block" },
-  tag:        { background:"#1a1a2e", border:"1px solid #2a2a3e", borderRadius:20, padding:"3px 10px", fontSize:12, color:"#c9a84c" },
-};
-
-/* ── Small UI components ────────────────────────────────────── */
-function EyeIcon({ show }) {
-  return show ? (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
-      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
-      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
-    </svg>
-  ) : (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  );
-}
-
-function PasswordInput({ value, onChange, onKeyDown, placeholder }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div style={{ position:"relative", width:"100%" }}>
-      <input style={{ ...S.input, paddingRight:42 }} type={show?"text":"password"}
-        placeholder={placeholder||"••••••••"} value={value} onChange={onChange} onKeyDown={onKeyDown} />
-      <span onClick={() => setShow(s => !s)}
-        style={{ position:"absolute", right:13, top:"11px", cursor:"pointer", lineHeight:0 }}>
-        <EyeIcon show={show} />
-      </span>
-    </div>
-  );
-}
-
-function PasswordStrength({ password }) {
-  if (!password) return null;
-  const hasUpper = /[A-Z]/.test(password), hasLower = /[a-z]/.test(password);
-  const hasNum = /[0-9]/.test(password), hasSpec = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>\/?]/.test(password);
-  const long = password.length >= 8;
-  const score = [hasUpper,hasLower,hasNum,hasSpec,long].filter(Boolean).length;
-  const label = score<=2?"Weak":score<=3?"Fair":score===4?"Good":"Strong";
-  const color = score<=2?"#f87171":score<=3?"#fbbf24":score===4?"#60a5fa":"#4ade80";
-  return (
-    <div style={{ marginTop:6 }}>
-      <div style={{ height:3, background:"#1e1e30", borderRadius:2, overflow:"hidden" }}>
-        <div style={{ height:"100%", width:`${score*20}%`, background:color, transition:"width .3s,background .3s" }} />
-      </div>
-      <p style={{ margin:"3px 0 0", fontSize:10, color }}>
-        {label}{!long?" — min 8 chars":!hasUpper?" — add uppercase":!hasSpec?" — add special char (!@#…)":""}
-      </p>
-    </div>
-  );
-}
-
-function OTPInput({ value, onChange, onEnter }) {
-  return (
-    <input style={{ ...S.input, fontSize:32, textAlign:"center", letterSpacing:14, fontWeight:700, color:"#c9a84c", fontFamily:"monospace", padding:"14px 0" }}
-      placeholder="• • • • • •" maxLength={6} value={value}
-      onChange={e => onChange(e.target.value.replace(/\D/g,""))}
-      onKeyDown={e => e.key==="Enter" && onEnter?.()} />
-  );
-}
-
-/* ── Confirm Modal — replaces window.confirm ────────────────── */
-function ConfirmModal({ open, title, message, onConfirm, onCancel, danger = true }) {
-  if (!open) return null;
-  return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000, padding:20 }}>
-      <div style={{ background:"#13131f", border:"1px solid #2a2a3e", borderRadius:16, padding:"28px 32px", maxWidth:420, width:"100%" }}>
-        <h3 style={{ margin:"0 0 10px", color:"#e8e0d0", fontSize:17, fontFamily:"'DM Sans',sans-serif" }}>{title}</h3>
-        <p style={{ margin:"0 0 24px", color:"#888", fontSize:14, lineHeight:1.6 }}>{message}</p>
-        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
-          <button onClick={onCancel}
-            style={{ padding:"9px 20px", background:"transparent", border:"1px solid #2a2a3e", borderRadius:8, color:"#888", cursor:"pointer", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>
-            Cancel
-          </button>
-          <button onClick={onConfirm}
-            style={{ padding:"9px 20px", background: danger ? "rgba(248,113,113,0.15)" : "linear-gradient(135deg,#c9a84c,#a07830)",
-              border: danger ? "1px solid rgba(248,113,113,0.35)" : "none",
-              borderRadius:8, color: danger ? "#f87171" : "#0a0a14",
-              cursor:"pointer", fontSize:13, fontWeight:700, fontFamily:"'DM Sans',sans-serif" }}>
-            {danger ? "Delete" : "Confirm"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════
-   SUCCESS PAGE
-══════════════════════════════════════════════════════════════ */
-function SuccessPage({ job, profile, onHome }) {
-  return (
-    <div style={{ minHeight:"100vh", background:"#07070f", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", padding:"24px 20px" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
-      {/* Logo */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:44 }}>
-        <div style={{ width:32, height:32, borderRadius:8, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:800, color:"#07070f" }}>H</div>
-        <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:600, color:"#c9a84c", letterSpacing:3 }}>HIREHUB</span>
-      </div>
-
-      <div style={{ width:"100%", maxWidth:500 }}>
-        {/* Check + title */}
-        <div style={{ textAlign:"center", marginBottom:28 }}>
-          <div style={{ width:80, height:80, borderRadius:"50%", background:"linear-gradient(135deg,#14532d,#166534)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 22px", boxShadow:"0 0 40px rgba(74,222,128,0.25)" }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </div>
-          <h1 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:34, fontWeight:600, color:"#e8e0d0", margin:"0 0 8px", cursor:"default", userSelect:"none" }}>Application Submitted!</h1>
-          <p style={{ color:"#4a4a6a", fontSize:14, margin:0, cursor:"default", userSelect:"none" }}>We'll notify you when there's an update.</p>
-        </div>
-
-        {/* Job card */}
-        <div style={{ background:"#0f0f1a", border:"1px solid #1e1e30", borderRadius:14, padding:"18px 20px", marginBottom:14, cursor:"default", userSelect:"none" }}>
-          <div style={{ display:"flex", gap:14, alignItems:"center", marginBottom:14, paddingBottom:14, borderBottom:"1px solid #1a1a2e" }}>
-            <div style={{ width:46, height:46, borderRadius:11, background:job.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:800, color:"#fff", flexShrink:0 }}>{job.logo}</div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ margin:0, fontWeight:700, fontSize:15, color:"#e8e0d0" }}>{job.title}</p>
-              <p style={{ margin:"3px 0 0", fontSize:12, color:"#555" }}>{job.company} · {job.location}</p>
-            </div>
-            <div style={{ textAlign:"right", flexShrink:0 }}>
-              <p style={{ margin:0, fontSize:13, color:"#c9a84c", fontWeight:600 }}>{convertToLPA(job.salary)}</p>
-              <p style={{ margin:"3px 0 0", fontSize:10, color:"#3a3a5a" }}>{job.type}</p>
-            </div>
-          </div>
-          {/* Meta row */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
-            <div>
-              <p style={{ margin:"0 0 4px", fontSize:9, color:"#2a2a4a", textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>Applied as</p>
-              <p style={{ margin:0, fontSize:13, color:"#c9c4bb", fontWeight:600 }}>{profile?.name}</p>
-            </div>
-            <div>
-              <p style={{ margin:"0 0 4px", fontSize:9, color:"#2a2a4a", textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>Status</p>
-              <span style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(96,165,250,.12)", color:"#60a5fa", borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:700 }}>
-                <span style={{ width:5, height:5, borderRadius:"50%", background:"#60a5fa", flexShrink:0 }}/>Applied
-              </span>
-            </div>
-            <div>
-              <p style={{ margin:"0 0 4px", fontSize:9, color:"#2a2a4a", textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>Date</p>
-              <p style={{ margin:0, fontSize:13, color:"#c9c4bb", fontWeight:600 }}>{new Date().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* What's next */}
-        <div style={{ background:"#0f0f1a", border:"1px solid #1e1e30", borderRadius:14, padding:"16px 20px", marginBottom:22, cursor:"default", userSelect:"none" }}>
-          <p style={{ margin:"0 0 12px", fontSize:9, color:"#2a2a4a", textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>What happens next</p>
-          <div style={{ display:"flex", gap:0, alignItems:"stretch" }}>
-            {[
-              { icon:"✓", label:"Submitted",  color:"#4ade80", done:true },
-              { icon:"⏳", label:"Reviewing",  color:"#fbbf24", done:false },
-              { icon:"⭐", label:"Decision",   color:"#a78bfa", done:false },
-            ].map((step, i) => (
-              <div key={step.label} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:6, position:"relative" }}>
-                {i > 0 && <div style={{ position:"absolute", left:0, top:16, width:"50%", height:2, background:"#1a1a2e" }} />}
-                {i < 2 && <div style={{ position:"absolute", right:0, top:16, width:"50%", height:2, background:"#1a1a2e" }} />}
-                <div style={{ width:34, height:34, borderRadius:"50%", zIndex:1,
-                  background: step.done ? "rgba(74,222,128,.15)" : "#151520",
-                  border:`2px solid ${step.done ? "#4ade80" : "#2a2a3e"}`,
-                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:13 }}>
-                  {step.icon}
-                </div>
-                <span style={{ fontSize:10, color: step.done ? step.color : "#3a3a5a", fontWeight: step.done ? 600 : 400 }}>{step.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Single back button */}
-        <button style={{ ...S.btn, width:"100%", padding:"14px", fontSize:15, letterSpacing:0.5 }} onClick={onHome}>
-          ← Back to All Jobs
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════
-   AUTH PAGE
-══════════════════════════════════════════════════════════════ */
-const FAKE_DOMAINS = new Set([
-  "mailinator.com","trashmail.com","yopmail.com","tempmail.com","guerrillamail.com",
-  "10minutemail.com","throwaway.email","fakeinbox.com","sharklasers.com","spam4.me",
-  "dispostable.com","maildrop.cc","temp-mail.org","emailondeck.com","mytemp.email",
-  "discard.email","spamgourmet.com","spambox.us","mailnull.com","trashmail.net",
-]);
-
-function clientValidateEmail(email) {
-  if (!email) return "Email is required";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return "Enter a valid email address";
-  const domain = email.split("@")[1]?.toLowerCase();
-  if (!domain || !domain.includes(".")) return "Enter a valid email address";
-  if (FAKE_DOMAINS.has(domain)) return "Disposable/temporary emails are not allowed";
-  return null;
-}
-
-function AuthPage({ onLogin }) {
-  const [mode, setMode] = useState(() => {
-    try {
-      const m = localStorage.getItem("hh_auth_mode") || "reg1";
-      localStorage.removeItem("hh_auth_mode");
-      return m;
-    } catch { return "reg1"; }
-  });
-  const [email, setEmail] = useState(() => {
-    try {
-      const sw = localStorage.getItem("hh_switch_email") || "";
-      if (sw) localStorage.removeItem("hh_switch_email");
-      return sw;
-    } catch { return ""; }
-  });
-  const [savedAccounts, setSavedAccounts] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("hh_accounts") || "[]"); } catch { return []; }
-  });
-  const [emailErr, setEmailErr] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
-  const [name, setName] = useState("");
-  const [otp, setOtp] = useState("");
-  const [pendingToken, setPending] = useState("");
-  const [resetToken, setResetToken] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const validateEmail = (v) => { const e = clientValidateEmail(v); setEmailErr(e||""); return !e; };
-  const inputStyle = (err) => ({ ...S.input, border:`1px solid ${err?"#ef4444":"#2a2a3e"}` });
-
-  const handleGoogleLogin = () => { window.location.href = `${API}/auth/google?prompt=select_account`; };
-
-  const handleLogin = async () => {
-    setError(""); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/login`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,password}) });
-      const d = await r.json();
-      if (!d.success) { setError(d.message); return; }
-      localStorage.setItem("hh_token", d.token);
-      localStorage.setItem("hh_user", JSON.stringify(d.user));
-      onLogin(d.user, d.token);
-    } catch { setError("Connection failed. Is the backend running?"); }
-    finally { setLoading(false); }
-  };
-
-  const handleReg1 = async () => {
-    if (!validateEmail(email)) return;
-    setError(""); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/send-register-otp`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) });
-      const d = await r.json();
-      if (!d.success) { setError(d.message); return; }
-      setPending(d.pendingToken); setOtp(""); setMode("reg2"); setSuccess("OTP sent to your email!");
-    } catch { setError("Connection failed."); }
-    finally { setLoading(false); }
-  };
-
-  const handleReg2 = async () => {
-    setError(""); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/verify-register-otp`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pendingToken,otp}) });
-      const d = await r.json();
-      if (!d.success) { setError(d.message); return; }
-      setMode("reg3"); setSuccess("Email verified!");
-    } catch { setError("Connection failed."); }
-    finally { setLoading(false); }
-  };
-
-  const handleReg3 = async () => {
-    if (password !== confirmPw) { setError("Passwords do not match."); return; }
-    setError(""); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/register`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name,password,pendingToken,otp}) });
-      const d = await r.json();
-      if (!d.success) { setError(d.message); return; }
-      localStorage.setItem("hh_token", d.token);
-      localStorage.setItem("hh_user", JSON.stringify(d.user));
-      onLogin(d.user, d.token);
-    } catch { setError("Connection failed."); }
-    finally { setLoading(false); }
-  };
-
-  const handleForgot = async () => {
-    if (!validateEmail(email)) return;
-    setError(""); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/forgot-password`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}) });
-      const d = await r.json();
-      if (!d.success) { setError(d.message); return; }
-      setOtp(""); setMode("fp_verify"); setSuccess("OTP sent to your email!");
-    } catch { setError("Connection failed."); }
-    finally { setLoading(false); }
-  };
-
-  const handleFpVerify = async () => {
-    setError(""); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/verify-otp`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,otp}) });
-      const d = await r.json();
-      if (!d.success) { setError(d.message); return; }
-      setResetToken(d.resetToken); setMode("fp_reset"); setSuccess("OTP verified!");
-    } catch { setError("Connection failed."); }
-    finally { setLoading(false); }
-  };
-
-  const handleFpReset = async () => {
-    if (password !== confirmPw) { setError("Passwords do not match."); return; }
-    setError(""); setLoading(true);
-    try {
-      const r = await fetch(`${API}/auth/reset-password`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({resetToken,newPassword:password}) });
-      const d = await r.json();
-      if (!d.success) { setError(d.message); return; }
-      setSuccess(d.message); setMode("login"); setPassword(""); setConfirmPw("");
-    } catch { setError("Connection failed."); }
-    finally { setLoading(false); }
-  };
-
-  const modeConfig = {
-    login:    { title:"Sign in", btn:"Sign In", action:handleLogin },
-    reg1:     { title:"Create account", btn:"Send OTP", action:handleReg1 },
-    reg2:     { title:"Verify email", btn:"Verify OTP", action:handleReg2 },
-    reg3:     { title:"Set password", btn:"Create Account", action:handleReg3 },
-    forgot:   { title:"Reset password", btn:"Send OTP", action:handleForgot },
-    fp_verify:{ title:"Enter OTP", btn:"Verify OTP", action:handleFpVerify },
-    fp_reset: { title:"New password", btn:"Reset Password", action:handleFpReset },
-  };
-  const { title, btn, action } = modeConfig[mode];
-
-  return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0a0a14,#13131f)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <div style={{ width:"100%", maxWidth:400, padding:"0 20px" }}>
-        <div style={{ textAlign:"center", marginBottom:36 }}>
-          <h1 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:40, color:"#c9a84c", margin:"0 0 6px", letterSpacing:4 }}>HIREHUB</h1>
-          <p style={{ color:"#3a3a5a", fontSize:12, margin:0, letterSpacing:3, textTransform:"uppercase" }}>Career Portal</p>
-        </div>
-        <div style={{ ...S.card, padding:"28px 24px" }}>
-
-          {/* ── Saved accounts chooser (login page only) ── */}
-          {mode === "login" && savedAccounts.length > 0 && (
-            <div style={{ marginBottom:18 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                <p style={{ margin:0, fontSize:10, color:"#3a3a5a", textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>Choose account</p>
-                <button onClick={() => { setSavedAccounts([]); localStorage.removeItem("hh_accounts"); }}
-                  style={{ background:"none", border:"none", color:"#3a3a5a", cursor:"pointer", fontSize:10, padding:0, fontFamily:"inherit" }}>
-                  Clear all
-                </button>
-              </div>
-              {savedAccounts.map(acc => (
-                <div key={acc.email}
-                  style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:9,
-                    border:"1px solid #1e1e30", marginBottom:5, cursor:"pointer", transition:"all .15s",
-                    background: email===acc.email ? "rgba(201,168,76,0.07)" : "transparent" }}
-                  onMouseOver={e => e.currentTarget.style.background="rgba(201,168,76,0.07)"}
-                  onMouseOut={e => e.currentTarget.style.background=email===acc.email?"rgba(201,168,76,0.07)":"transparent"}>
-                  {/* Avatar */}
-                  {acc.avatar
-                    ? <img src={acc.avatar} alt={acc.name} referrerPolicy="no-referrer" onClick={() => setEmail(acc.email)}
-                        style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
-                    : <div onClick={() => setEmail(acc.email)}
-                        style={{ width:32, height:32, borderRadius:8, flexShrink:0,
-                          background:`linear-gradient(135deg,${["#c9a84c","#60a5fa","#4ade80","#f87171","#a78bfa"][acc.name?.charCodeAt(0)%5||0]},#333)`,
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          fontSize:13, fontWeight:700, color:"#fff" }}>
-                        {acc.name?.[0]?.toUpperCase()}
-                      </div>}
-                  {/* Name + email */}
-                  <div style={{ flex:1, minWidth:0 }} onClick={() => setEmail(acc.email)}>
-                    <p style={{ margin:0, fontSize:12, fontWeight:600, color:"#e8e0d0",
-                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{acc.name}</p>
-                    <p style={{ margin:"1px 0 0", fontSize:10, color:"#555",
-                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{acc.email}</p>
-                  </div>
-                  {/* Remove × */}
-                  <button onClick={e => {
-                    e.stopPropagation();
-                    const updated = savedAccounts.filter(a => a.email !== acc.email);
-                    setSavedAccounts(updated);
-                    localStorage.setItem("hh_accounts", JSON.stringify(updated));
-                    if (email === acc.email) setEmail("");
-                  }}
-                    title="Remove account"
-                    style={{ background:"none", border:"none", cursor:"pointer", color:"#2a2a4a",
-                      fontSize:16, padding:"2px 6px", lineHeight:1, transition:"color .15s", flexShrink:0 }}
-                    onMouseOver={e => e.currentTarget.style.color="#f87171"}
-                    onMouseOut={e => e.currentTarget.style.color="#2a2a4a"}>
-                    ×
-                  </button>
-                </div>
-              ))}
-              <div style={{ height:1, background:"#1e1e30", margin:"12px 0 14px" }} />
-            </div>
-          )}
-
-          {/* ── Sign In / Register tab switcher ── */}
-          {(mode==="login" || mode==="reg1") && (
-            <div style={{ display:"flex", gap:4, background:"#0a0a14", borderRadius:8, padding:4, marginBottom:20 }}>
-              {[["login","Sign In"],["reg1","Register"]].map(([m,lbl]) => (
-                <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
-                  style={{ flex:1, padding:"9px 0", borderRadius:6, border:"none", cursor:"pointer",
-                    fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif", transition:"all .2s",
-                    background: mode===m ? "linear-gradient(135deg,#c9a84c,#a07830)" : "transparent",
-                    color: mode===m ? "#0a0a14" : "#555" }}>
-                  {lbl}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* ── Back button for multi-step flows ── */}
-          {(mode==="reg2"||mode==="reg3") && (
-            <button onClick={() => { setMode(mode==="reg2"?"reg1":"reg2"); setError(""); setSuccess(""); }}
-              style={{ background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:12,
-                padding:"0 0 14px", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 }}>
-              ← Back
-            </button>
-          )}
-          {(mode==="forgot"||mode==="fp_verify"||mode==="fp_reset") && (
-            <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
-              style={{ background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:12,
-                padding:"0 0 14px", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4 }}>
-              ← Back to sign in
-            </button>
-          )}
-
-          <div style={{ marginBottom:20 }}>
-            <h2 style={{ margin:"0 0 4px", fontSize:18, color:"#e8e0d0", fontWeight:600 }}>{title}</h2>
-            {mode === "login" && savedAccounts.length === 0 && <p style={{ margin:0, fontSize:13, color:"#555" }}>Welcome back</p>}
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-            {mode === "login" && (<>
-              <div>
-                <label style={S.label}>Email</label>
-                <input style={S.input} type="email" placeholder="you@company.com" value={email}
-                  onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key==="Enter" && handleLogin()} />
-              </div>
-              <div>
-                <label style={S.label}>Password</label>
-                <PasswordInput value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key==="Enter" && handleLogin()} />
-                <div style={{ textAlign:"right", marginTop:6 }}>
-                  <button onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }}
-                    style={{ background:"none", border:"none", color:"#c9a84c", cursor:"pointer", fontSize:12, padding:0, fontFamily:"inherit" }}>
-                    Forgot password?
-                  </button>
-                </div>
-              </div>
-            </>)}
-            {mode === "reg1" && (<>
-              <div>
-                <label style={S.label}>Email Address</label>
-                <input style={inputStyle(emailErr)} type="email" placeholder="yourname@gmail.com" value={email}
-                  onChange={e => { setEmail(e.target.value); validateEmail(e.target.value); }} onKeyDown={e => e.key==="Enter" && handleReg1()} />
-                {emailErr
-                  ? <p style={{ color:"#f87171", fontSize:11, margin:"3px 0 0" }}>⚠ {emailErr}</p>
-                  : email && clientValidateEmail(email)===null
-                    ? <p style={{ color:"#4ade80", fontSize:11, margin:"3px 0 0" }}>✓ Looks good</p>
-                    : null}
-              </div>
-              <p style={{ color:"#3a3a5a", fontSize:11, margin:0, lineHeight:1.6 }}>We'll send a 6-digit OTP to verify this is a real email.</p>
-            </>)}
-            {mode === "reg2" && (<>
-              <div><label style={S.label}>6-Digit OTP</label><OTPInput value={otp} onChange={setOtp} onEnter={handleReg2} /></div>
-              <button onClick={() => { setOtp(""); handleReg1(); }} style={{ background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:11, padding:0, fontFamily:"inherit", textAlign:"left" }}>Didn't receive it? Resend OTP</button>
-            </>)}
-            {mode === "reg3" && (<>
-              <div><label style={S.label}>Full Name</label><input style={S.input} placeholder="Your full name" value={name} onChange={e => setName(e.target.value)} /></div>
-              <div><label style={S.label}>Password</label><PasswordInput value={password} onChange={e => setPassword(e.target.value)} /><PasswordStrength password={password} /></div>
-              <div>
-                <label style={S.label}>Confirm Password</label>
-                <PasswordInput value={confirmPw} onChange={e => setConfirmPw(e.target.value)} onKeyDown={e => e.key==="Enter" && handleReg3()} />
-                {confirmPw && <p style={{ fontSize:11, margin:"3px 0 0", color:password===confirmPw?"#4ade80":"#f87171" }}>{password===confirmPw?"✓ Passwords match":"⚠ Passwords do not match"}</p>}
-              </div>
-            </>)}
-            {mode === "forgot" && (<>
-              <div>
-                <label style={S.label}>Registered Email</label>
-                <input style={inputStyle(emailErr)} type="email" placeholder="you@company.com" value={email}
-                  onChange={e => { setEmail(e.target.value); validateEmail(e.target.value); }} onKeyDown={e => e.key==="Enter" && handleForgot()} />
-                {emailErr && <p style={{ color:"#f87171", fontSize:11, margin:"3px 0 0" }}>⚠ {emailErr}</p>}
-              </div>
-            </>)}
-            {mode === "fp_verify" && (<>
-              <div><label style={S.label}>Enter OTP</label><OTPInput value={otp} onChange={setOtp} onEnter={handleFpVerify} /></div>
-              <button onClick={() => { setOtp(""); handleForgot(); }} style={{ background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:11, padding:0, fontFamily:"inherit", textAlign:"left" }}>Resend OTP</button>
-            </>)}
-            {mode === "fp_reset" && (<>
-              <div><label style={S.label}>New Password</label><PasswordInput value={password} onChange={e => setPassword(e.target.value)} /><PasswordStrength password={password} /></div>
-              <div>
-                <label style={S.label}>Confirm Password</label>
-                <PasswordInput value={confirmPw} onChange={e => setConfirmPw(e.target.value)} onKeyDown={e => e.key==="Enter" && handleFpReset()} />
-                {confirmPw && <p style={{ fontSize:11, margin:"3px 0 0", color:password===confirmPw?"#4ade80":"#f87171" }}>{password===confirmPw?"✓ Passwords match":"⚠ Passwords do not match"}</p>}
-              </div>
-            </>)}
-            {error && <p style={{ color:"#f87171", fontSize:13, margin:0, lineHeight:1.5 }}>⚠ {error}</p>}
-            {success && <p style={{ color:"#4ade80", fontSize:13, margin:0 }}>✓ {success}</p>}
-            <button style={{ ...S.btn, width:"100%", padding:"13px", fontSize:14, marginTop:2 }} onClick={action} disabled={loading}>
-              {loading ? "⟳ Please wait…" : btn}
-            </button>
-            {mode === "login" && (<>
-              <div style={{ display:"flex", alignItems:"center", gap:10, margin:"4px 0" }}>
-                <div style={{ flex:1, height:1, background:"#1e1e30" }} />
-                <span style={{ color:"#555", fontSize:12 }}>OR</span>
-                <div style={{ flex:1, height:1, background:"#1e1e30" }} />
-              </div>
-              <button onClick={handleGoogleLogin}
-                style={{ width:"100%", padding:"10px", borderRadius:6, border:"1px solid #2a2a3e", background:"transparent", color:"#e8e0d0", fontSize:13, fontWeight:500, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontFamily:"inherit" }}
-                onMouseOver={e => e.currentTarget.style.background="#1a1a2a"}
-                onMouseOut={e => e.currentTarget.style.background="transparent"}>
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Continue with Google
-              </button>
-
-            </>)}
-            {(mode==="reg1"||mode==="reg2"||mode==="reg3") && (
-              <p style={{ textAlign:"center", margin:0, fontSize:13, color:"#3a3a5a" }}>
-                Already have an account?{" "}
-                <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
-                  style={{ background:"none", border:"none", color:"#c9a84c", cursor:"pointer", fontSize:13, fontFamily:"inherit", padding:0 }}>Sign in</button>
-              </p>
-            )}
-
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 
 /* ══════════════════════════════════════════════════════════════
    CHART COMPONENTS — pure SVG, no library needed
@@ -1794,6 +1258,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
   const [coverNote, setCover] = useState("");
   const [applied, setApplied] = useState({});
   const [applying, setApp] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [uploadStep, setStep] = useState(0);
   const [dragging, setDrag] = useState(false);
   const [successJob, setSuccessJob] = useState(null);
@@ -1836,15 +1301,25 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
   const loadMyApps = useCallback(async () => {
     setMyAppsLoading(true);
     try {
-      const r = await fetch(`${API}/applications/my`, { headers: authHeader });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const r = await fetch(`${API}/applications/my`, { headers: authHeader, signal: controller.signal });
+      clearTimeout(timeoutId);
       const d = await r.json();
-      if (d.success) setMyApps(d.data);
+      if (d.success) {
+        setMyApps(d.data);
+        const map = {};
+        d.data.forEach(a => { if (a.job) map[a.job._id] = true; });
+        setApplied(prev => ({...prev, ...map}));
+      }
+    } catch (e) {
+      console.error("Failed to load apps", e);
     } finally { setMyAppsLoading(false); }
   }, [token]);
 
   useEffect(() => {
-    if (portalTab === "myapps") loadMyApps();
-  }, [portalTab, loadMyApps]);
+    loadMyApps();
+  }, [loadMyApps]);
 
   const toggleBookmark = (jobId) => {
     setBookmarks(prev => {
@@ -1939,6 +1414,10 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
     if (matchPct < 40) return;
     if (!selectedJob._id) { setApplyError("Job data not loaded from database. Please refresh."); return; }
     setApp(true); setApplyError("");
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
       const fd = new FormData();
       fd.append("jobId", selectedJob._id);
@@ -1948,13 +1427,16 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
       fd.append("matchPercent", matchPct);
       fd.append("coverLetter", coverNote||"");
       fd.append("resume", resume);
-      const res = await fetch(`${API}/applications`, { method:"POST", headers: authHeader, body: fd });
+      const res = await fetch(`${API}/applications`, { method:"POST", headers: authHeader, body: fd, signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await res.json();
       if (!data.success) { setApplyError("" + data.message); return; }
       setApplied(prev => ({...prev, [selectedJob._id]:true}));
-      setCover(""); setApplyError(""); setSuccessJob(selectedJob); setPhase("success");
+      setCover(""); setApplyError(""); setSuccessJob(selectedJob); 
+      setShowSuccessModal(true);
     } catch (err) {
-      setApplyError("Could not connect to backend. " + err.message);
+      if (err.name === "AbortError") setApplyError("Request timed out. Please try again.");
+      else setApplyError("Could not connect to backend. " + err.message);
     } finally { setApp(false); }
   };
 
@@ -2293,30 +1775,16 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
                 const isActive = selectedJob && jobKey(selectedJob)===jk;
                 const isBookmarked = bookmarks.includes(jk);
                 return (
-                  <div key={jk} onClick={() => setSel(j)}
-                    style={{ padding:"14px 16px", cursor:"pointer", borderBottom:"1px solid #1a1a2a", transition:"background .15s",
-                      background: isActive ? "rgba(201,168,76,0.07)" : "transparent",
-                      borderLeft: isActive ? "2px solid #c9a84c" : "2px solid transparent" }}
-                    onMouseOver={e => { if(!isActive) e.currentTarget.style.background="#111120"; }}
-                    onMouseOut={e => { if(!isActive) e.currentTarget.style.background="transparent"; }}>
-                    <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-                      <div style={{ width:38, height:38, borderRadius:10, background:j.color||"#635BFF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#fff", flexShrink:0 }}>{j.logo||"J"}</div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                          <p style={{ margin:0, fontSize:13, fontWeight:700, color:isActive?"#c9a84c":"#e8e0d0", lineHeight:1.3, paddingRight:8 }}>{j.title}</p>
-                          <button onClick={e => { e.stopPropagation(); toggleBookmark(jk); }}
-                            style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, padding:0, flexShrink:0, opacity: isBookmarked?1:0.4, transition:"opacity .15s" }}>
-                            {isBookmarked ? "★" : "☆"}
-                          </button>
-                        </div>
-                        <p style={{ margin:"2px 0 0", fontSize:12, color:"#666" }}>{j.company} · {j.location}</p>
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:8 }}>
-                          <span style={{ fontSize:11, color:"#c9a84c", fontWeight:600 }}>{convertToLPA(j.salary)}</span>
-                          <span style={{ fontSize:12, fontWeight:700, color:matchColor(j.match) }}>{j.match}% match</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <JobCard
+                    key={jk}
+                    job={j}
+                    isActive={isActive}
+                    isBookmarked={isBookmarked}
+                    toggleBookmark={() => toggleBookmark(jk)}
+                    onClick={() => setSel(j)}
+                    matchColor={matchColor}
+                    convertToLPA={convertToLPA}
+                  />
                 );
               })}
             </div>
@@ -2494,11 +1962,11 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
               </div>
               <div style={{ padding:"18px" }}>
                 {applied[jobKey(selectedJob)] ? (
-                  <div style={{ background:"rgba(16,185,129,0.1)", border:"1px solid rgba(16,185,129,0.2)", borderRadius:8, padding:"14px", textAlign:"center" }}>
-                    <span style={{ color:"#10b981", fontSize:18, display:"block", marginBottom:4 }}>✓</span>
-                    <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#10b981" }}>Application Sent!</p>
-                    <p style={{ margin:"4px 0 0", fontSize:11, color:"#6b7280" }}>Track it in My Applications</p>
-                  </div>
+                  <button disabled
+                    style={{ width:"100%", padding:"13px", borderRadius:8, border:"1px solid #10b981", cursor:"not-allowed",
+                      background:"rgba(16,185,129,0.1)", color:"#10b981", fontSize:15, fontWeight:700 }}>
+                    ✓ Applied
+                  </button>
                 ) : matchPct >= 40 ? (
                   <button onClick={doApply} disabled={applying}
                     style={{ width:"100%", padding:"13px", borderRadius:8, border:"none", cursor:applying?"not-allowed":"pointer",
