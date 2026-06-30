@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API = "https://hirehub-dx1z.onrender.com/api";
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:5000/api" : "https://hirehub-dx1z.onrender.com/api");
 
 function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
   const [open, setOpen] = useState(false);

@@ -5,7 +5,7 @@ import SuccessPage from "./pages/SuccessPage";
 import JobCard from "./components/JobCard";
 import { S, PasswordInput, PasswordStrength, ConfirmModal } from "./components/UI";
 
-const API = "https://hirehub-dx1z.onrender.com/api";
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:5000/api" : "https://hirehub-dx1z.onrender.com/api");
 
 const SKILL_KEYWORDS = [
   "java","python","javascript","typescript","react","angular","vue","node","nodejs",
@@ -553,7 +553,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
       )}
 
       {/* Sidebar */}
-      <aside style={{ width:240, background:"#0b0b17", borderRight:"1px solid #141428", display:"flex", flexDirection:"column", flexShrink:0, position:"fixed", left:0, top:0, height:"100vh", zIndex:20 }}>
+      <aside style={{ width:240, background:"#0b0b17", borderRight:"1px solid #1c1c2e", display:"flex", flexDirection:"column", flexShrink:0, position:"fixed", left:0, top:0, height:"100vh", zIndex:20 }}>
         <div style={{ padding:"32px 24px 24px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
             <div style={{ width:32, height:32, borderRadius:8, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -561,62 +561,76 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
             </div>
             <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, fontWeight:600, color:"#c9a84c", letterSpacing:3 }}>HIREHUB</span>
           </div>
-          <p style={{ margin:0, fontSize:10, color:"#2a2a4a", letterSpacing:2, textTransform:"uppercase", paddingLeft:42 }}>Admin Portal</p>
+          <p style={{ margin:0, fontSize:10, color:"#8a8a9a", letterSpacing:2, textTransform:"uppercase", fontWeight:600, paddingLeft:42 }}>Admin Portal</p>
         </div>
         <nav style={{ flex:1, padding:"8px 12px" }}>
-          <p style={{ margin:"0 0 8px 12px", fontSize:10, color:"#2a2a4a", letterSpacing:2, textTransform:"uppercase" }}>Menu</p>
+          <p style={{ margin:"0 0 12px 14px", fontSize:11, color:"#7a7a9a", letterSpacing:1.5, textTransform:"uppercase", fontWeight:600 }}>Menu</p>
           {navItems.map(item => {
             const active = tab === item.id;
             return (
               <button key={item.id} onClick={() => setTab(item.id)}
-                style={{ width:"100%", display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:10, border:"none", cursor:"pointer", marginBottom:2, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:active?600:400, textAlign:"left", transition:"all .2s",
-                  background: active ? "linear-gradient(135deg,rgba(201,168,76,.18),rgba(201,168,76,.06))" : "transparent",
-                  color: active ? "#c9a84c" : "#3a3a5a" }}>
-                <span style={{ fontSize:16 }}>{item.icon}</span>
+                onMouseEnter={e => {
+                  if(!active) {
+                    e.currentTarget.style.background="rgba(255,255,255,0.04)";
+                    e.currentTarget.style.color="#e8e0d0";
+                  }
+                }}
+                onMouseLeave={e => {
+                  if(!active) {
+                    e.currentTarget.style.background="transparent";
+                    e.currentTarget.style.color="#a1a1aa";
+                  }
+                }}
+                style={{ width:"100%", display:"flex", alignItems:"center", gap:12, padding:"10px 14px", borderRadius:8, border:active?"1px solid rgba(201,168,76,0.2)":"1px solid transparent", cursor:"pointer", marginBottom:4, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:active?600:500, textAlign:"left", transition:"all .2s",
+                  background: active ? "linear-gradient(135deg,rgba(201,168,76,.15),rgba(201,168,76,.05))" : "transparent",
+                  color: active ? "#c9a84c" : "#a1a1aa" }}>
+                <span style={{ fontSize:18, display:"flex", alignItems:"center", opacity:active?1:0.7 }}>{item.icon}</span>
                 {item.label}
               </button>
             );
           })}
         </nav>
-        <div style={{ padding:"12px 16px", borderTop:"1px solid #141428" }}>
+        <div style={{ padding:"16px", borderTop:"1px solid #1c1c2e" }}>
           {/* User info row */}
-          <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 8px 10px", marginBottom:4 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px", marginBottom:16, background:"#131320", border:"1px solid #1c1c2e", borderRadius:10 }}>
             {user.avatar
-              ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width:34, height:34, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
-              : <div style={{ width:34, height:34, borderRadius:8, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#07070f", flexShrink:0 }}>
+              ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
+              : <div style={{ width:36, height:36, borderRadius:9, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#07070f", flexShrink:0 }}>
                   {user.name?.[0]?.toUpperCase()}
                 </div>}
-            <div style={{ flex:1, overflow:"hidden" }}>
-              <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#c9c4bb", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.name}</p>
-              <p style={{ margin:0, fontSize:10, color:"#2a2a4a" }}>Administrator</p>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.name}</p>
+              <div style={{ marginTop:2 }}>
+                <span style={{ fontSize:10, color:"#c9a84c", background:"rgba(201,168,76,0.1)", padding:"2px 6px", borderRadius:4, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, display:"inline-block" }}>Administrator</span>
+              </div>
             </div>
           </div>
           {/* 3 action buttons */}
           <button onClick={onAddAccount}
-            style={{ width:"100%", display:"flex", alignItems:"center", gap:9, padding:"8px 10px", background:"transparent", border:"none", borderRadius:7, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#3a3a5a", transition:"all .15s", textAlign:"left", marginBottom:2 }}
-            onMouseOver={e => { e.currentTarget.style.background="#0f0f1e"; e.currentTarget.style.color="#c9c4bb"; }}
-            onMouseOut={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#3a3a5a"; }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"transparent", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:500, color:"#a1a1aa", transition:"all .15s", textAlign:"left", marginBottom:4 }}
+            onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.04)"; e.currentTarget.style.color="#e8e0d0"; }}
+            onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#a1a1aa"; }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.8 }}>
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
               <line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/>
             </svg>
             Add account
           </button>
           <button onClick={() => { window.location.href=`${API}/auth/google?prompt=select_account`; }}
-            style={{ width:"100%", display:"flex", alignItems:"center", gap:9, padding:"8px 10px", background:"transparent", border:"none", borderRadius:7, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#3a3a5a", transition:"all .15s", textAlign:"left", marginBottom:2 }}
-            onMouseOver={e => { e.currentTarget.style.background="#0f0f1e"; e.currentTarget.style.color="#c9c4bb"; }}
-            onMouseOut={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#3a3a5a"; }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"transparent", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:500, color:"#a1a1aa", transition:"all .15s", textAlign:"left", marginBottom:4 }}
+            onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.04)"; e.currentTarget.style.color="#e8e0d0"; }}
+            onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#a1a1aa"; }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.8 }}>
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
               <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
             Switch account
           </button>
           <button onClick={onLogout}
-            style={{ width:"100%", display:"flex", alignItems:"center", gap:9, padding:"8px 10px", background:"transparent", border:"none", borderRadius:7, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#3a3a5a", transition:"all .15s", textAlign:"left" }}
-            onMouseOver={e => { e.currentTarget.style.background="rgba(248,113,113,0.08)"; e.currentTarget.style.color="#f87171"; }}
-            onMouseOut={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#3a3a5a"; }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"transparent", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:500, color:"#a1a1aa", transition:"all .15s", textAlign:"left" }}
+            onMouseEnter={e => { e.currentTarget.style.background="rgba(248,113,113,0.08)"; e.currentTarget.style.color="#f87171"; e.currentTarget.querySelector('svg').style.opacity = 1; }}
+            onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#a1a1aa"; e.currentTarget.querySelector('svg').style.opacity = 0.8; }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.8, transition:"opacity .15s" }}>
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
@@ -647,9 +661,9 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
                     { label:"Reviewing",           value:stats.reviewing,   color:"#fbbf24", glow:"rgba(251,191,36,.15)" },
                     { label:"Rejected",            value:stats.rejected,    color:"#f87171", glow:"rgba(248,113,113,.15)" },
                   ].map(k => (
-                    <div key={k.label} style={{ background:"#0b0b17", border:"1px solid #141428", borderRadius:14, padding:"22px", transition:"transform .2s, box-shadow .2s", cursor:"default" }}
-                      onMouseOver={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=`0 8px 32px ${k.glow}`; }}
-                      onMouseOut={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; }}>
+                    <div key={k.label} style={{ background:"#0b0b17", border:"1px solid #141428", borderRadius:14, padding:"22px", transition:"transform .2s", cursor:"default" }}
+                      onMouseOver={e => { e.currentTarget.style.transform="translateY(-2px)"; }}
+                      onMouseOut={e => { e.currentTarget.style.transform="translateY(0)"; }}>
                       <p style={{ margin:"0 0 14px", fontSize:10, color:"#2a2a4a", textTransform:"uppercase", letterSpacing:2, fontWeight:600 }}>{k.label}</p>
                       <p style={{ margin:0, fontSize:34, fontWeight:700, color:k.color, lineHeight:1 }}>{k.value??"-"}</p>
                     </div>
@@ -1229,11 +1243,12 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
 /* ══════════════════════════════════════════════════════════════
    JOB PORTAL — with My Applications + Profile tabs
 ══════════════════════════════════════════════════════════════ */
-function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
+function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAuth }) {
   const [user, setUser] = useState(initialUser);
   // Skip upload if: (a) profile saved in localStorage, OR (b) Google user (has avatar)
   const savedProfile = (() => {
     try {
+      if (!initialUser) return null;
       const stored = JSON.parse(localStorage.getItem(`hh_profile_${initialUser.email}`) || "null");
       if (stored) return stored;
       // Google users get a default profile so they skip upload
@@ -1245,7 +1260,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
       return null;
     } catch { return null; }
   })();
-  const [phase, setPhase] = useState(savedProfile ? "portal" : "upload");
+  const [phase, setPhase] = useState(initialUser ? (savedProfile ? "portal" : "upload") : "portal");
   const [portalTab, setPortalTab] = useState("jobs");
   const [resume, setResume] = useState(null);
   const [profile, setProfile] = useState(savedProfile);
@@ -1271,7 +1286,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
   const [myApps, setMyApps] = useState([]);
   const [myAppsLoading, setMyAppsLoading] = useState(false);
   // Profile editing
-  const [editName, setEditName] = useState(user.name||"");
+  const [editName, setEditName] = useState(user?.name||"");
   const [editMsg, setEditMsg] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [cpCurrent, setCpCurrent] = useState("");
@@ -1309,7 +1324,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
       if (d.success) {
         setMyApps(d.data);
         const map = {};
-        d.data.forEach(a => { if (a.job) map[a.job._id] = true; });
+        d.data.forEach(a => { if (a.jobId) map[a.jobId._id] = true; });
         setApplied(prev => ({...prev, ...map}));
       }
     } catch (e) {
@@ -1409,6 +1424,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
   const jobKey = (j) => j?._id || j?.id;
 
   const doApply = async () => {
+    if (!user) { onShowAuth('login'); return; }
     if (!resume || !selectedJob) return;
     const matchPct = calcMatch(selectedJob);
     if (matchPct < 40) return;
@@ -1433,7 +1449,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
       if (!data.success) { setApplyError("" + data.message); return; }
       setApplied(prev => ({...prev, [selectedJob._id]:true}));
       setCover(""); setApplyError(""); setSuccessJob(selectedJob); 
-      setShowSuccessModal(true);
+      setPhase("success");
     } catch (err) {
       if (err.name === "AbortError") setApplyError("Request timed out. Please try again.");
       else setApplyError("Could not connect to backend. " + err.message);
@@ -1604,8 +1620,10 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
         <div style={{ display:"flex", gap:4 }}>
           {[
             { id:"jobs",    label:"Browse Jobs" },
-            { id:"myapps", label:"My Applications" },
-            { id:"profile", label:"Profile" },
+            ...(user ? [
+              { id:"myapps", label:"My Applications" },
+              { id:"profile", label:"Profile" }
+            ] : [])
           ].map(t => (
             <button key={t.id} onClick={() => setPortalTab(t.id)}
               style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"inherit", transition:"all .2s",
@@ -1621,11 +1639,18 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
         </div>
 
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <AccountDropdown
-            user={user}
-            onLogout={onLogout}
-            onAddAccount={onAddAccount}
-          />
+          {user ? (
+            <AccountDropdown
+              user={user}
+              onLogout={onLogout}
+              onAddAccount={onAddAccount}
+            />
+          ) : (
+            <>
+              <button onClick={() => onShowAuth('login')} style={{ background:"transparent", border:"1px solid #c9a84c", color:"#c9a84c", padding:"6px 16px", borderRadius:20, cursor:"pointer", fontSize:13, fontWeight:600 }}>Sign In</button>
+              <button onClick={() => onShowAuth('reg1')} style={{ background:"#c9a84c", border:"none", color:"#0a0a14", padding:"6px 16px", borderRadius:20, cursor:"pointer", fontSize:13, fontWeight:600 }}>Sign Up</button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -1861,12 +1886,21 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount }) {
               <div style={{ padding:"18px", borderBottom:"1px solid #2a2a3e" }}>
                 <h4 style={{ fontSize:11, fontWeight:600, color:"#9ca3af", textTransform:"uppercase", letterSpacing:1, marginBottom:14 }}>Your Profile</h4>
                 <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                  {user.avatar ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:10, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
-                    : <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:"#0a0a14" }}>{user.name?.[0]?.toUpperCase()}</div>}
-                  <div>
-                    <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0" }}>{profile?.name||user.name}</p>
-                    <p style={{ margin:0, fontSize:11, color:"#666" }}>{user.email}</p>
-                  </div>
+                  {user ? (
+                    <>
+                      {user.avatar ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:10, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
+                        : <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:"#0a0a14" }}>{user.name?.[0]?.toUpperCase()}</div>}
+                      <div>
+                        <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0" }}>{profile?.name||user.name}</p>
+                        <p style={{ margin:0, fontSize:11, color:"#666" }}>{user.email}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ padding:"4px 0" }}>
+                      <p style={{ margin:0, fontSize:12, color:"#9ca3af", marginBottom:10 }}>Sign in to view your profile and apply.</p>
+                      <button onClick={() => onShowAuth('login')} style={{ background:"transparent", border:"1px solid #c9a84c", color:"#c9a84c", padding:"4px 12px", borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:600 }}>Sign In</button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ padding:"16px 18px", borderBottom:"1px solid #2a2a3e" }}>
@@ -2001,6 +2035,7 @@ export default function App() {
   const savedToken = localStorage.getItem("hh_token");
   const [user, setUser]   = useState(savedUser);
   const [token, setToken] = useState(savedToken);
+  const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2022,6 +2057,7 @@ export default function App() {
 
   const handleLogin = (u, t) => {
     setUser(u); setToken(t);
+    setShowAuth(false);
     // Save to accounts list for switcher
     try {
       const saved = JSON.parse(localStorage.getItem("hh_accounts") || "[]");
@@ -2042,9 +2078,13 @@ export default function App() {
     localStorage.removeItem("hh_user");
     localStorage.setItem("hh_auth_mode", "reg1"); // signal AuthPage to open Register
     setUser(null); setToken(null);
+    setShowAuth(true);
   };
 
-  if (!user) return <AuthPage onLogin={handleLogin} />;
-  if (user.role === "admin") return <AdminDashboard user={user} token={token} onLogout={handleLogout} onAddAccount={handleAddAccount} />;
-  return <JobPortal user={user} token={token} onLogout={handleLogout} onAddAccount={handleAddAccount} />;
+  if (showAuth) return <AuthPage onLogin={handleLogin} />;
+  if (user?.role === "admin") return <AdminDashboard user={user} token={token} onLogout={handleLogout} onAddAccount={handleAddAccount} />;
+  return <JobPortal user={user} token={token} onLogout={handleLogout} onAddAccount={handleAddAccount} onShowAuth={(mode) => {
+    localStorage.setItem("hh_auth_mode", mode);
+    setShowAuth(true);
+  }} />;
 }
