@@ -324,9 +324,14 @@
         const [user, setUser] = useState(savedUser);
         const [token, setToken] = useState(savedToken);
 
+        const getQueryParam = (name) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        };
+        const API = window.location.hostname === "localhost" ? "http://localhost:5000/api" : "https://hirehub-dx1z.onrender.com/api";
+
         useEffect(() => {
-            const params = new URLSearchParams(window.location.search);
-            const t = params.get("token");
+            const t = getQueryParam("token");
             if (t) {
                 fetch(`${API}/auth/google-success`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({token:t}) })
                     .then(r=>r.json()).then(d=>{

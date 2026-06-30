@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { S, PasswordInput, PasswordStrength, OTPInput } from '../components/UI';
-
-const API = "https://hirehub-dx1z.onrender.com/api";
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:5000/api" : "https://hirehub-dx1z.onrender.com/api");
 
 const FAKE_DOMAINS = new Set([
   "mailinator.com","trashmail.com","yopmail.com","tempmail.com","guerrillamail.com",

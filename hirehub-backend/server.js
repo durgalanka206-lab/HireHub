@@ -1,5 +1,9 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const dns = require("node:dns");
+
+// Use public DNS for SRV lookups
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
@@ -13,11 +17,21 @@ const app = express();
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
 // Use CLIENT_URL env var — never hardcode localhost in production
-const clientUrl = process.env.CLIENT_URL || "https://hirehub-silk.vercel.app";
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://hirehub.vercel.app",
+  "https://hirehub-silk.vercel.app"
+];
 
 app.use(cors({
-  origin: clientUrl,
-  credentials: true,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -64,7 +78,7 @@ mongoose.connect(process.env.MONGO_URI)
     console.log("✅ MongoDB connected");
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running at http://localhost:${PORT}`);
-      console.log(`🌐 Allowing requests from: ${clientUrl}`);
+      console.log(`🌐 Allowing requests from: ${process.env.CLIENT_URL || allowedOrigins.join(", ")}`);
     });
   })
   .catch((err) => { console.error("❌ MongoDB failed:", err.message); process.exit(1); });
