@@ -20,7 +20,8 @@ if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 const allowedOrigins = [
   "http://localhost:3000",
   "https://hirehub.vercel.app",
-  "https://hirehub-silk.vercel.app"
+  "https://hirehub-silk.vercel.app",
+  "https://hirehubx.vercel.app"
 ];
 
 app.use(cors({
