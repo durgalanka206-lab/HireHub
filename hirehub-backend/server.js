@@ -22,8 +22,9 @@ const allowedOrigins = [
   "http://localhost:3001",
   "https://hirehub.vercel.app",
   "https://hirehub-silk.vercel.app",
-  "https://hirehubx.vercel.app"
-];
+  "https://hirehubx.vercel.app",
+  process.env.CLIENT_URL
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {

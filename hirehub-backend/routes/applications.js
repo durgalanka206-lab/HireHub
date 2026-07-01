@@ -317,4 +317,19 @@ router.delete("/:id", protect, adminOnly, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════
+// DELETE /api/applications/:id/withdraw - User withdrawal
+// ══════════════════════════════════════════════════════════════
+router.delete("/:id/withdraw", protect, async (req, res) => {
+  try {
+    const app = await Application.findOne({ _id: req.params.id, candidateEmail: req.user.email });
+    if (!app) return res.status(404).json({ success: false, message: "Application not found or unauthorized." });
+    await app.deleteOne();
+    if (app.resumeFilename) try { fs.unlinkSync(path.join("uploads", app.resumeFilename)); } catch {}
+    res.json({ success: true, message: "Application withdrawn." });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

@@ -127,9 +127,12 @@ router.post("/google-success", async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
     if (!user) return res.status(401).json({ success: false, message: "User not found" });
+    const userObj = user.toObject();
+    delete userObj.password;
+    userObj.id = userObj._id;
     res.json({
       success: true, token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+      user: userObj,
     });
   } catch (err) {
     res.status(401).json({ success: false, message: "Invalid token" });
@@ -211,11 +214,14 @@ router.post("/register", async (req, res) => {
     const user  = await User.create({ name: name.trim(), email, password, role });
     const token = signToken(user._id);
 
+    const userObj = user.toObject();
+    delete userObj.password;
+    userObj.id = userObj._id;
     res.status(201).json({
       success: true,
       message: "Account created successfully!",
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: userObj,
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -231,7 +237,10 @@ router.post("/login", loginLimiter, async (req, res) => {
     if (!user || !(await user.comparePassword(password)))
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     const token = signToken(user._id);
-    res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+    const userObj = user.toObject();
+    delete userObj.password;
+    userObj.id = userObj._id;
+    res.json({ success: true, token, user: userObj });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -246,15 +255,102 @@ router.post("/update-profile", async (req, res) => {
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found." });
 
-    const { name } = req.body;
-    if (name && name.trim().length >= 2) {
-      user.name = name.trim();
-      await user.save();
+    const updatableFields = [
+      "name", "phone", "city", "state", "country", "dob", "headline", "about", 
+      "skills", "preferredRole", "preferredLocation", "employmentType", "expectedSalary", 
+      "experienceLevel", "workPreference", "socialLinkedIn", "socialGitHub", 
+      "socialPortfolio", "socialLeetCode", "socialHackerRank"
+    ];
+
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        user[field] = req.body[field];
+      }
+    });
+
+    if (req.body.name && req.body.name.trim().length >= 2) {
+      user.name = req.body.name.trim();
     }
-    res.json({ success: true, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+    
+    await user.save();
+    
+    const userObj = user.toObject();
+    delete userObj.password;
+    userObj.id = userObj._id;
+    
+    res.json({ success: true, user: userObj });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
+});
+
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename:    (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["application/pdf","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF or DOCX files allowed"));
+  },
+});
+
+// POST /api/auth/upload-resume
+router.post("/upload-resume", upload.single("resume"), async (req, res) => {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) return res.status(401).json({ success: false, message: "Not authenticated." });
+    const decoded = jwt.verify(auth.split(" ")[1], process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+    if (!req.file) return res.status(400).json({ success: false, message: "No resume uploaded." });
+
+    if (user.resumeFilename) {
+      try { fs.unlinkSync(path.join("uploads", user.resumeFilename)); } catch {}
+    }
+
+    user.resumeFilename = req.file.filename;
+    user.resumeOriginalName = req.file.originalname;
+    user.resumeUploadedAt = new Date();
+    
+    if (req.body.skills) {
+      try { user.skills = JSON.parse(req.body.skills); } catch {}
+    }
+
+    await user.save();
+    const userObj = user.toObject(); delete userObj.password; userObj.id = userObj._id;
+    res.json({ success: true, user: userObj });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// DELETE /api/auth/delete-resume
+router.delete("/delete-resume", async (req, res) => {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) return res.status(401).json({ success: false, message: "Not authenticated." });
+    const decoded = jwt.verify(auth.split(" ")[1], process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+    if (user.resumeFilename) {
+      try { fs.unlinkSync(path.join("uploads", user.resumeFilename)); } catch {}
+    }
+    user.resumeFilename = "";
+    user.resumeOriginalName = "";
+    user.resumeUploadedAt = null;
+
+    await user.save();
+    const userObj = user.toObject(); delete userObj.password; userObj.id = userObj._id;
+    res.json({ success: true, user: userObj });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // POST /api/auth/change-password
@@ -376,11 +472,27 @@ router.delete("/delete-account", protect, async (req, res) => {
       }
     }
     await Application.deleteMany({ candidateEmail: req.user.email });
+    
+    // Delete profile resume if exists
+    if (req.user.resumeFilename) {
+      try { fs.unlinkSync(path.join("uploads", req.user.resumeFilename)); } catch {}
+    }
+
     // Delete user
     await User.findByIdAndDelete(userId);
     res.json({ success: true, message: "Account deleted successfully." });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.get("/seed", async (req, res) => {
+  try {
+    const seedLogic = require("../seedJobs");
+    await seedLogic();
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

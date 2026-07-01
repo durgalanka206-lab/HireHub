@@ -12,6 +12,38 @@ const userSchema = new mongoose.Schema(
     // New fields for Google auth
     googleId:         { type: String, sparse: true, unique: true },
     avatar:           { type: String },
+    
+    // Personal Info
+    phone:            { type: String, default: "" },
+    city:             { type: String, default: "" },
+    state:            { type: String, default: "" },
+    country:          { type: String, default: "" },
+    dob:              { type: Date },
+    headline:         { type: String, default: "" },
+    about:            { type: String, default: "" },
+    
+    // Resume
+    resumeFilename:   { type: String, default: "" },
+    resumeOriginalName:{ type: String, default: "" },
+    resumeUploadedAt: { type: Date },
+    
+    // Skills
+    skills:           [{ type: String }],
+    
+    // Career Preferences
+    preferredRole:    { type: String, default: "" },
+    preferredLocation:{ type: String, default: "" },
+    employmentType:   { type: String, default: "" },
+    expectedSalary:   { type: String, default: "" },
+    experienceLevel:  { type: String, default: "" },
+    workPreference:   { type: String, default: "" }, // Remote, Hybrid, Onsite
+    
+    // Social Links
+    socialLinkedIn:   { type: String, default: "" },
+    socialGitHub:     { type: String, default: "" },
+    socialPortfolio:  { type: String, default: "" },
+    socialLeetCode:   { type: String, default: "" },
+    socialHackerRank: { type: String, default: "" },
   },
   { timestamps: true }
 );

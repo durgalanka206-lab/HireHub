@@ -5,7 +5,7 @@ import SuccessPage from "./pages/SuccessPage";
 import JobCard from "./components/JobCard";
 import { S, PasswordInput, PasswordStrength, ConfirmModal } from "./components/UI";
 
-const API = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:5000/api" : "https://hirehub-dx1z.onrender.com/api");
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:5000/api" : process.env.REACT_APP_BACKEND_URL ? process.env.REACT_APP_BACKEND_URL + "/api" : "https://hirehub-dx1z.onrender.com/api");
 
 const SKILL_KEYWORDS = [
   "java","python","javascript","typescript","react","angular","vue","node","nodejs",
@@ -210,7 +210,7 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
               background:"linear-gradient(135deg,#c9a84c,#8b6914)",
               display:"flex", alignItems:"center", justifyContent:"center",
               fontSize:13, fontWeight:700, color:"#0a0a14" }}>
-              {user.name?.[0]?.toUpperCase()}
+              {user?.name?.[0]?.toUpperCase()}
             </div>}
       </button>
 
@@ -238,7 +238,7 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
                       background:"linear-gradient(135deg,#c9a84c,#8b6914)",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       fontSize:15, fontWeight:700, color:"#0a0a14", flexShrink:0 }}>
-                      {user.name?.[0]?.toUpperCase()}
+                      {user?.name?.[0]?.toUpperCase()}
                     </div>}
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#e8e0d0",
@@ -340,7 +340,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
     setLoading(true);
     try {
       const r = await fetch(`${API}/applications/stats`, { headers: authHeader });
-      const d = await r.json();
+      const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
       if (d.success) setStats(d.data);
     } finally { setLoading(false); }
   }, [token]);
@@ -353,7 +353,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
       if (search) params.set("search", search);
       if (filterJob !== "all") params.set("jobId", filterJob);
       const r = await fetch(`${API}/applications?${params}`, { headers: authHeader });
-      const d = await r.json();
+      const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
       if (d.success) setApps(d.data);
     } finally { setLoading(false); }
   }, [token, filterStatus, search, filterJob]);
@@ -371,7 +371,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
     const r = await fetch(`${API}/applications/${id}/status`, {
       method:"PATCH", headers:{ ...authHeader, "Content-Type":"application/json" }, body:JSON.stringify({ status }),
     });
-    const d = await r.json();
+    const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
     if (d.success) {
       setApps(prev => prev.map(a => a._id===id ? {...a, status} : a));
       if (selected?._id===id) setSelected(s => ({...s, status}));
@@ -382,7 +382,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
   const deleteApp = async () => {
     const id = confirmDel?.id;
     const r = await fetch(`${API}/applications/${id}`, { method:"DELETE", headers: authHeader });
-    const d = await r.json();
+    const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
     if (d.success) { setApps(prev => prev.filter(a => a._id!==id)); setSelected(null); loadStats(); }
     setConfirmDel(null);
   };
@@ -392,7 +392,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
     setJobsLoading(true);
     try {
       const r = await fetch(`${API}/jobs/all`, { headers: authHeader });
-      const d = await r.json();
+      const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
       if (d.success) setAllJobs(d.data);
     } finally { setJobsLoading(false); }
   }, [token]);
@@ -414,7 +414,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
         headers: { ...authHeader, "Content-Type":"application/json" },
         body: JSON.stringify(payload),
       });
-      const d = await r.json();
+      const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
       if (!d.success) { setJobFormErr(d.message); return; }
       loadAllJobs();
       setJobForm(null);
@@ -425,7 +425,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
   const deleteJob = async () => {
     const id = confirmDel?.id;
     const r = await fetch(`${API}/jobs/${id}`, { method:"DELETE", headers: authHeader });
-    const d = await r.json();
+    const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
     if (d.success) setAllJobs(prev => prev.filter(j => j._id!==id));
     setConfirmDel(null);
   };
@@ -435,7 +435,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
       method:"PUT", headers:{ ...authHeader, "Content-Type":"application/json" },
       body: JSON.stringify({ isActive: !job.isActive }),
     });
-    const d = await r.json();
+    const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
     if (d.success) setAllJobs(prev => prev.map(j => j._id===job._id ? {...j, isActive:!j.isActive} : j));
   };
 
@@ -596,7 +596,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
             {user?.avatar
               ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
               : <div style={{ width:36, height:36, borderRadius:9, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#07070f", flexShrink:0 }}>
-                  {user.name?.[0]?.toUpperCase()}
+                  {user?.name?.[0]?.toUpperCase()}
                 </div>}
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(user?.name || "")}</p>
@@ -1198,10 +1198,10 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
                       <div style={{ width:44, height:44, borderRadius:10, background:job.color||"#635BFF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:800, color:"#fff", flexShrink:0 }}>{job.logo||"J"}</div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                          <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#d4cfc8" }}>{job.title}</p>
+                          <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#d4cfc8" }}>{job?.title}</p>
                           {!job.isActive && <span style={{ background:"rgba(248,113,113,.12)", color:"#f87171", borderRadius:20, padding:"2px 8px", fontSize:10, fontWeight:600, border:"1px solid rgba(248,113,113,.2)" }}>Inactive</span>}
                         </div>
-                        <p style={{ margin:0, fontSize:12, color:"#3a3a5a" }}>{job.company} · {job.location} · {job.type}</p>
+                        <p style={{ margin:0, fontSize:12, color:"#3a3a5a" }}>{job?.company} · {job.location} · {job.type}</p>
                         <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:8 }}>
                           {(job.tags||[]).slice(0,5).map(t => (
                             <span key={t} style={{ background:"rgba(201,168,76,.08)", color:"#c9a84c", borderRadius:12, padding:"2px 8px", fontSize:11, border:"1px solid rgba(201,168,76,.15)" }}>{t}</span>
@@ -1220,7 +1220,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
                           style={{ padding:"7px 14px", borderRadius:8, border:"1px solid #1e1e30", background:"transparent", cursor:"pointer", fontSize:11, fontWeight:600, fontFamily:"'DM Sans',sans-serif", color:"#c9a84c" }}>
                           Edit
                         </button>
-                        <button onClick={() => setConfirmDel({ id:job._id, type:"job", name:job.title })}
+                        <button onClick={() => setConfirmDel({ id:job._id, type:"job", name:job?.title })}
                           style={{ padding:"4px 10px", borderRadius:6, border:"1px solid rgba(248,113,113,.25)", background:"transparent", cursor:"pointer", fontSize:11, fontWeight:500, fontFamily:"'DM Sans',sans-serif", color:"#f87171" }}
                           onMouseOver={e => e.currentTarget.style.background="rgba(248,113,113,.08)"}
                           onMouseOut={e => e.currentTarget.style.background="transparent"}>
@@ -1285,8 +1285,16 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
   // My Applications
   const [myApps, setMyApps] = useState([]);
   const [myAppsLoading, setMyAppsLoading] = useState(false);
+  const [viewApp, setViewApp] = useState(null);
+  const [withdrawAppId, setWithdrawAppId] = useState(null);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
   // Profile editing
-  const [editName, setEditName] = useState(user?.name||"");
+  const [editProfile, setEditProfile] = useState({
+    name: user?.name||"", phone: user?.phone||"", city: user?.city||"", state: user?.state||"", country: user?.country||"", dob: user?.dob ? new Date(user.dob).toISOString().split('T')[0] : "", headline: user?.headline||"", about: user?.about||"",
+    preferredRole: user?.preferredRole||"", preferredLocation: user?.preferredLocation||"", employmentType: user?.employmentType||"", expectedSalary: user?.expectedSalary||"", experienceLevel: user?.experienceLevel||"", workPreference: user?.workPreference||"",
+    socialLinkedIn: user?.socialLinkedIn||"", socialGitHub: user?.socialGitHub||"", socialPortfolio: user?.socialPortfolio||"", socialLeetCode: user?.socialLeetCode||"", socialHackerRank: user?.socialHackerRank||"",
+    skills: user?.skills || []
+  });
   const [editMsg, setEditMsg] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [cpCurrent, setCpCurrent] = useState("");
@@ -1314,24 +1322,32 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
   // Load my applications when tab is active
   const loadMyApps = useCallback(async () => {
-    if (!user || !token) { setMyAppsLoading(false); return; }
+    if (!user || !token) { 
+      setMyAppsLoading(false); 
+      setMyApps([]);
+      setApplied({});
+      return; 
+    }
     setMyAppsLoading(true);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       const r = await fetch(`${API}/applications/my`, { headers: authHeader, signal: controller.signal });
       clearTimeout(timeoutId);
-      const d = await r.json();
+      const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
       if (d.success) {
         setMyApps(d.data);
         const map = {};
-        d.data.forEach(a => { if (a.jobId) map[a.jobId._id] = true; });
-        setApplied(prev => ({...prev, ...map}));
+        d.data.forEach(a => { 
+          if (a.jobId) map[a.jobId._id || a.jobId] = true; 
+          else if (a.job) map[a.job] = true; // Fallback
+        });
+        setApplied(map); // Set exactly from backend data
       }
     } catch (e) {
       console.error("Failed to load apps", e);
     } finally { setMyAppsLoading(false); }
-  }, [token]);
+  }, [user?.email, token]);
 
   useEffect(() => {
     loadMyApps();
@@ -1422,6 +1438,75 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     }
   };
 
+  const handleProfileResume = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+    const isDocx = file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.name.endsWith(".docx");
+    if (!isPdf && !isDocx) { alert("Only PDF or DOCX files are accepted."); return; }
+    
+    setEditLoading(true); setEditMsg("Extracting skills...");
+    try {
+      let text = "";
+      if (isPdf) {
+        const pdfjsLib = await loadPdfJs();
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        for (let i=1; i<=pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(it=>it.str).join(" ") + "\n";
+        }
+      } else {
+        const mammoth = await loadMammoth();
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        text = result.value;
+      }
+      
+      const parsed = extractSkills(text);
+      const newSkills = Array.from(new Set([...editProfile.skills, ...(parsed.skills||[])]));
+      
+      setEditMsg("Uploading resume...");
+      const fd = new FormData();
+      fd.append("resume", file);
+      fd.append("skills", JSON.stringify(newSkills));
+      
+      const res = await fetch(`${API}/auth/upload-resume`, { method: "POST", headers: authHeader, body: fd });
+      const d = await res.json();
+      if (d.success) {
+        setUser(d.user);
+        localStorage.setItem("hh_user", JSON.stringify(d.user));
+        setEditProfile(prev => ({...prev, skills: newSkills}));
+        setEditMsg("✓ Resume uploaded & skills extracted");
+      } else { setEditMsg(d.message || "Failed to upload resume"); }
+    } catch (err) {
+      setEditMsg("Failed to process resume");
+    } finally {
+      setTimeout(() => setEditMsg(""), 3000);
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteResume = async () => {
+    if (!window.confirm("Delete your resume?")) return;
+    setEditLoading(true); setEditMsg("Deleting resume...");
+    try {
+      const res = await fetch(`${API}/auth/delete-resume`, { method: "DELETE", headers: authHeader });
+      const d = await res.json();
+      if (d.success) {
+        setUser(d.user);
+        localStorage.setItem("hh_user", JSON.stringify(d.user));
+        setEditMsg("✓ Resume deleted");
+      } else { setEditMsg(d.message || "Failed to delete resume"); }
+    } catch (err) {
+      setEditMsg("Failed to delete resume");
+    } finally {
+      setTimeout(() => setEditMsg(""), 3000);
+      setEditLoading(false);
+    }
+  };
+
   const jobKey = (j) => j?._id || j?.id;
 
   const doApply = async () => {
@@ -1446,9 +1531,22 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       fd.append("resume", resume);
       const res = await fetch(`${API}/applications`, { method:"POST", headers: authHeader, body: fd, signal: controller.signal });
       clearTimeout(timeoutId);
-      const data = await res.json();
-      if (!data.success) { setApplyError("" + data.message); return; }
+      const data = await res.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
+      if (!data.success) { 
+        if (data.message && data.message.toLowerCase().includes("already applied")) {
+          setApplied(prev => ({...prev, [selectedJob?._id]:true}));
+          loadMyApps();
+          setApplyError("");
+          setApp(false);
+          return;
+        }
+        setApplyError("" + data.message); 
+        return; 
+      }
       setApplied(prev => ({...prev, [selectedJob?._id]:true}));
+      if (data.data) {
+        setMyApps(prev => [data.data, ...prev]);
+      }
       setCover(""); setApplyError(""); setSuccessJob(selectedJob); 
       setPhase("success");
     } catch (err) {
@@ -1457,22 +1555,46 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     } finally { setApp(false); }
   };
 
+  const handleWithdraw = async (appId, jobId) => {
+    setWithdrawLoading(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(`${API}/applications/${appId}/withdraw`, { method: "DELETE", headers: authHeader, signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await res.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
+      if (data.success) {
+        setMyApps(prev => prev.filter(a => a._id !== appId));
+        setApplied(prev => { const next = {...prev}; delete next[jobId]; return next; });
+      } else {
+        alert("Failed to withdraw application: " + data.message);
+      }
+    } catch (err) {
+      alert("Failed to withdraw application.");
+    } finally {
+      setWithdrawLoading(false);
+      setWithdrawAppId(null);
+    }
+  };
+
   const handleUpdateProfile = async () => {
     setEditLoading(true); setEditMsg("");
     try {
       const r = await fetch(`${API}/auth/update-profile`, {
         method:"POST", headers:{ ...authHeader, "Content-Type":"application/json" },
-        body: JSON.stringify({ name: editName }),
+        body: JSON.stringify(editProfile),
       });
-      const d = await r.json();
+      const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
       if (d.success) {
         setUser(d.user);
         localStorage.setItem("hh_user", JSON.stringify(d.user));
-        setEditMsg("✓ Name updated successfully.");
+        setEditMsg("✓ Profile updated successfully.");
       } else { setEditMsg("⚠ " + d.message); }
     } catch { setEditMsg("⚠ Connection failed."); }
-    finally { setEditLoading(false); }
+    finally { setEditLoading(false); setTimeout(() => setEditMsg(""), 3000); }
   };
+
+  const handleProfileChange = (field, val) => setEditProfile(prev => ({...prev, [field]: val}));
 
   const handleChangePassword = async () => {
     if (cpNew !== cpConfirm) { setCpMsg("⚠ New passwords do not match."); return; }
@@ -1482,7 +1604,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
         method:"POST", headers:{ ...authHeader, "Content-Type":"application/json" },
         body: JSON.stringify({ currentPassword:cpCurrent, newPassword:cpNew }),
       });
-      const d = await r.json();
+      const d = await r.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
       if (d.success) { setCpMsg("✓ Password changed successfully."); setCpCurrent(""); setCpNew(""); setCpConfirm(""); }
       else { setCpMsg("⚠ " + d.message); }
     } catch { setCpMsg("⚠ Connection failed."); }
@@ -1688,10 +1810,14 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                         <p style={{ margin:"0 0 4px", fontSize:22, fontWeight:700, color:matchColor(app.matchPercent) }}>{app.matchPercent}%</p>
                         <p style={{ margin:0, fontSize:11, color:"#555" }}>Match</p>
                       </div>
-                      <div style={{ flexShrink:0 }}>
+                      <div style={{ flexShrink:0, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
                         <span style={{ background:sc.bg, color:sc.color, borderRadius:20, padding:"6px 14px", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>
                           <span style={{ width:6, height:6, borderRadius:"50%", background:sc.color, flexShrink:0 }} />{sc.label}
                         </span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => setViewApp(app)} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#e8e0d0", padding: "6px 12px", borderRadius: 6, fontSize: 11, cursor: "pointer", transition: "all .2s" }} onMouseOver={e => e.currentTarget.style.background = "#1a1a2e"} onMouseOut={e => e.currentTarget.style.background = "transparent"}>View Application</button>
+                          <button onClick={() => setWithdrawAppId(app)} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#f87171", padding: "6px 12px", borderRadius: 6, fontSize: 11, cursor: "pointer", transition: "all .2s" }} onMouseOver={e => {e.currentTarget.style.background = "rgba(248,113,113,0.1)"; e.currentTarget.style.borderColor = "#f87171"}} onMouseOut={e => {e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "#2a2a3e"}}>Withdraw</button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1699,44 +1825,234 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               </div>
             )}
           </div>
+          
+          {/* View Application Modal */}
+          {viewApp && (
+            <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20 }}>
+              <div style={{ background:"#13131f", border:"1px solid #2a2a3e", borderRadius:16, padding:"28px 32px", maxWidth:500, width:"100%", maxHeight:"90vh", overflowY:"auto" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                  <h3 style={{ margin:0, fontSize:20, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Application Details</h3>
+                  <button onClick={() => setViewApp(null)} style={{ background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:24, padding: 0 }}>×</button>
+                </div>
+                
+                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                  <div>
+                    <p style={{ margin:0, fontSize:12, color:"#888" }}>Company & Job Title</p>
+                    <p style={{ margin:"4px 0 0", fontSize:16, color:"#e8e0d0", fontWeight:600 }}>{viewApp.jobId?.company} - {viewApp.jobId?.title}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 32 }}>
+                    <div>
+                      <p style={{ margin:0, fontSize:12, color:"#888" }}>Location</p>
+                      <p style={{ margin:"4px 0 0", fontSize:14, color:"#d4cfc8" }}>{viewApp.jobId?.location}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin:0, fontSize:12, color:"#888" }}>Salary</p>
+                      <p style={{ margin:"4px 0 0", fontSize:14, color:"#d4cfc8" }}>{viewApp.jobId?.salary || "Not specified"}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 32 }}>
+                    <div>
+                      <p style={{ margin:0, fontSize:12, color:"#888" }}>Applied Date</p>
+                      <p style={{ margin:"4px 0 0", fontSize:14, color:"#d4cfc8" }}>{new Date(viewApp.createdAt).toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"})}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin:0, fontSize:12, color:"#888" }}>Match Score</p>
+                      <p style={{ margin:"4px 0 0", fontSize:14, color:matchColor(viewApp.matchPercent), fontWeight:600 }}>{viewApp.matchPercent}%</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ margin:0, fontSize:12, color:"#888" }}>Current Status</p>
+                    <div style={{ marginTop: 6, display: "inline-block" }}>
+                      <span style={{ background:(statusStyles[viewApp.status]||statusStyles.applied).bg, color:(statusStyles[viewApp.status]||statusStyles.applied).color, borderRadius:20, padding:"6px 14px", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>
+                        <span style={{ width:6, height:6, borderRadius:"50%", background:(statusStyles[viewApp.status]||statusStyles.applied).color, flexShrink:0 }} />{(statusStyles[viewApp.status]||statusStyles.applied).label}
+                      </span>
+                    </div>
+                  </div>
+                  {viewApp.resumeFilename && (
+                    <div>
+                      <p style={{ margin:0, fontSize:12, color:"#888" }}>Resume</p>
+                      <div style={{ marginTop: 6, display: "flex", gap: 10, alignItems: "center" }}>
+                        <span style={{ fontSize: 20 }}>📄</span>
+                        <p style={{ margin: 0, fontSize: 13, color: "#d4cfc8", wordBreak: "break-all" }}>{viewApp.resumeFilename.split('-').slice(1).join('-') || viewApp.resumeFilename}</p>
+                        <a href={`${API.replace('/api', '')}/uploads/${viewApp.resumeFilename}`} target="_blank" rel="noreferrer" style={{ background: "rgba(201,168,76,0.1)", color: "#c9a84c", padding: "4px 10px", borderRadius: 6, fontSize: 11, textDecoration: "none", fontWeight: 600 }}>View / Download</a>
+                      </div>
+                    </div>
+                  )}
+                  {viewApp.coverLetter && (
+                    <div>
+                      <p style={{ margin:0, fontSize:12, color:"#888" }}>Cover Letter</p>
+                      <div style={{ marginTop: 6, background: "#0b0b17", padding: 12, borderRadius: 8, border: "1px solid #1a1a2e", fontSize: 13, color: "#d4cfc8", whiteSpace: "pre-wrap" }}>
+                        {viewApp.coverLetter}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Withdraw Confirm Modal */}
+          <ConfirmModal
+            open={!!withdrawAppId}
+            title="Withdraw Application?"
+            message={`Are you sure you want to withdraw your application for ${withdrawAppId?.jobId?.title} at ${withdrawAppId?.jobId?.company}?`}
+            onConfirm={() => handleWithdraw(withdrawAppId._id, withdrawAppId.jobId?._id || withdrawAppId.jobId)}
+            onCancel={() => setWithdrawAppId(null)}
+          />
+
         </div>
       )}
 
       {/* ── PROFILE TAB ──────────────────────────────────────── */}
       {portalTab==="profile" && (
         <div style={{ flex:1, overflowY:"auto", padding:"24px" }}>
-          <div style={{ maxWidth:560, margin:"0 auto" }}>
-            <h2 style={{ margin:"0 0 24px", fontSize:20, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif", letterSpacing:1 }}>Your Profile</h2>
+          <div style={{ maxWidth: 800, margin:"0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+            <h2 style={{ margin:0, fontSize:24, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif", letterSpacing:1 }}>Professional Profile</h2>
 
-            {/* Profile card */}
-            <div style={{ ...S.card, padding:"24px", marginBottom:16 }}>
-              <div style={{ display:"flex", gap:16, alignItems:"center", marginBottom:20 }}>
-                {user?.avatar ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:60, height:60, borderRadius:14, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
-                  : <div style={{ width:60, height:60, borderRadius:14, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:700, color:"#0a0a14" }}>{user.name?.[0]?.toUpperCase()}</div>}
-                <div>
-                  <p style={{ margin:"0 0 4px", fontSize:18, fontWeight:700, color:"#e8e0d0" }}>{(user?.name || "")}</p>
-                  <p style={{ margin:"0 0 4px", fontSize:13, color:"#888" }}>{(user?.email || "")}</p>
-                  <span style={{ background:"rgba(96,165,250,.15)", color:"#60a5fa", borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}>
+            {/* Header / Basic Info */}
+            <div style={{ ...S.card, padding:"32px", display:"flex", gap:24, alignItems:"center", flexWrap: "wrap" }}>
+              {user?.avatar ? <img src={user?.avatar} alt={user?.name||""} referrerPolicy="no-referrer" style={{ width:100, height:100, borderRadius:20, objectFit:"cover" }} />
+                : <div style={{ width:100, height:100, borderRadius:20, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:40, fontWeight:700, color:"#0a0a14" }}>{user?.name?.[0]?.toUpperCase()}</div>}
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <h3 style={{ margin:"0 0 8px", fontSize:26, fontWeight:700, color:"#e8e0d0" }}>{user?.name||""}</h3>
+                <p style={{ margin:"0 0 12px", fontSize:15, color:"#a8a8b8" }}>{user?.headline || "Add a professional headline"}</p>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 13, color: "#888" }}>
+                  <span>📧 {user?.email}</span>
+                  {user?.phone && <span>📱 {user?.phone}</span>}
+                  {user?.city && <span>📍 {user?.city}{user?.country ? `, ${user?.country}` : ""}</span>}
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <span style={{ background:"rgba(96,165,250,.15)", color:"#60a5fa", borderRadius:20, padding:"4px 12px", fontSize:12, fontWeight:600 }}>
                     {user?.role==="admin" ? "Administrator" : "Member"}
+                  </span>
+                  <span style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>
+                    Member since {user?.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear()}
                   </span>
                 </div>
               </div>
-              <div>
-                <label style={S.label}>Display Name</label>
-                <input style={S.input} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Your name" />
-                {editMsg && <p style={{ margin:"6px 0 0", fontSize:12, color: editMsg.startsWith("✓")?"#4ade80":"#f87171" }}>{editMsg}</p>}
-                <button onClick={handleUpdateProfile} disabled={editLoading}
-                  style={{ ...S.btn, marginTop:12, padding:"10px 24px", fontSize:13, opacity:editLoading?0.7:1 }}>
-                  {editLoading ? "Saving…" : "Save Name"}
-                </button>
+            </div>
+
+            {/* Statistics */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
+              <div style={{ ...S.card, padding: "20px", textAlign: "center" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, color: "#888" }}>Applications</p>
+                <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e8e0d0" }}>{myApps.length}</p>
+              </div>
+              <div style={{ ...S.card, padding: "20px", textAlign: "center" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, color: "#888" }}>Saved Jobs</p>
+                <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e8e0d0" }}>{bookmarks.length}</p>
+              </div>
+              <div style={{ ...S.card, padding: "20px", textAlign: "center" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, color: "#888" }}>Profile Match</p>
+                <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#c9a84c" }}>{user?.skills?.length ? Math.min(100, user.skills.length * 5) : 0}%</p>
               </div>
             </div>
 
-            {/* Change password — only for non-Google users */}
-            {!user?.avatar && (
+            {/* Editable Personal Info */}
+            <div style={{ ...S.card, padding:"24px" }}>
+              <h3 style={{ margin:"0 0 20px", fontSize:18, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Personal Information</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div><label style={S.label}>Full Name</label><input style={S.input} value={editProfile.name} onChange={e => handleProfileChange("name", e.target.value)} /></div>
+                <div><label style={S.label}>Phone Number</label><input style={S.input} value={editProfile.phone} onChange={e => handleProfileChange("phone", e.target.value)} /></div>
+                <div><label style={S.label}>Headline</label><input style={S.input} value={editProfile.headline} onChange={e => handleProfileChange("headline", e.target.value)} placeholder="e.g. Senior Software Engineer" /></div>
+                <div><label style={S.label}>Date of Birth</label><input type="date" style={{...S.input, colorScheme: "dark"}} value={editProfile.dob} onChange={e => handleProfileChange("dob", e.target.value)} /></div>
+                <div><label style={S.label}>City</label><input style={S.input} value={editProfile.city} onChange={e => handleProfileChange("city", e.target.value)} /></div>
+                <div><label style={S.label}>Country</label><input style={S.input} value={editProfile.country} onChange={e => handleProfileChange("country", e.target.value)} /></div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={S.label}>About Me</label>
+                  <textarea style={{ ...S.input, height: 100, resize: "vertical" }} value={editProfile.about} onChange={e => handleProfileChange("about", e.target.value)} placeholder="Brief summary of your background..." />
+                </div>
+              </div>
+            </div>
+
+            {/* Resume Section */}
+            <div style={{ ...S.card, padding:"24px" }}>
+              <h3 style={{ margin:"0 0 16px", fontSize:18, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Resume</h3>
+              {user?.resumeFilename ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.03)", padding: "16px 20px", borderRadius: 12, flexWrap: "wrap", gap: 16 }}>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: "#d4cfc8" }}>{user.resumeOriginalName || user.resumeFilename.split('-').slice(1).join('-')}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "#888" }}>Uploaded {user.resumeUploadedAt ? new Date(user.resumeUploadedAt).toLocaleDateString() : "recently"}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <a href={`${API.replace('/api', '')}/uploads/${user.resumeFilename}`} target="_blank" rel="noreferrer" style={{ ...S.btn, textDecoration: "none", background: "transparent", border: "1px solid #c9a84c", color: "#c9a84c", padding: "8px 16px", fontSize: 12 }}>Download</a>
+                    <button onClick={() => document.getElementById("profileResumeReplace").click()} style={{ ...S.btn, padding: "8px 16px", fontSize: 12 }}>Replace</button>
+                    <button onClick={handleDeleteResume} style={{ ...S.btn, background: "transparent", border: "1px solid #f87171", color: "#f87171", padding: "8px 16px", fontSize: 12 }}>Delete</button>
+                    <input type="file" id="profileResumeReplace" hidden accept=".pdf,.docx" onChange={handleProfileResume} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: "30px", border: "2px dashed #2a2a3e", borderRadius: 12 }}>
+                  <p style={{ margin: "0 0 16px", color: "#888", fontSize: 14 }}>No resume uploaded yet. Upload a resume to automatically extract skills.</p>
+                  <button onClick={() => document.getElementById("profileResumeInput").click()} style={{...S.btn, padding: "10px 24px"}}>Upload Resume</button>
+                  <input type="file" id="profileResumeInput" hidden accept=".pdf,.docx" onChange={handleProfileResume} />
+                </div>
+              )}
+            </div>
+
+            {/* Career Preferences & Social */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
               <div style={{ ...S.card, padding:"24px" }}>
-                <h3 style={{ margin:"0 0 16px", fontSize:15, color:"#e8e0d0" }}>Change Password</h3>
-                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                <h3 style={{ margin:"0 0 20px", fontSize:18, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Career Preferences</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div><label style={S.label}>Preferred Role</label><input style={S.input} value={editProfile.preferredRole} onChange={e => handleProfileChange("preferredRole", e.target.value)} placeholder="e.g. Frontend Developer" /></div>
+                  <div><label style={S.label}>Employment Type</label>
+                    <select style={{ ...S.input, appearance: "none" }} value={editProfile.employmentType} onChange={e => handleProfileChange("employmentType", e.target.value)}>
+                      <option value="" style={{color:"#000"}}>Select...</option><option value="Full-time" style={{color:"#000"}}>Full-time</option><option value="Part-time" style={{color:"#000"}}>Part-time</option><option value="Contract" style={{color:"#000"}}>Contract</option><option value="Internship" style={{color:"#000"}}>Internship</option>
+                    </select>
+                  </div>
+                  <div><label style={S.label}>Expected Salary</label><input style={S.input} value={editProfile.expectedSalary} onChange={e => handleProfileChange("expectedSalary", e.target.value)} placeholder="e.g. ₹20 LPA or $100k" /></div>
+                  <div><label style={S.label}>Work Preference</label>
+                    <select style={{ ...S.input, appearance: "none" }} value={editProfile.workPreference} onChange={e => handleProfileChange("workPreference", e.target.value)}>
+                      <option value="" style={{color:"#000"}}>Select...</option><option value="Remote" style={{color:"#000"}}>Remote</option><option value="Hybrid" style={{color:"#000"}}>Hybrid</option><option value="Onsite" style={{color:"#000"}}>Onsite</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ ...S.card, padding:"24px" }}>
+                <h3 style={{ margin:"0 0 20px", fontSize:18, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Social Links</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div><label style={S.label}>LinkedIn</label><input style={S.input} value={editProfile.socialLinkedIn} onChange={e => handleProfileChange("socialLinkedIn", e.target.value)} placeholder="https://linkedin.com/in/..." /></div>
+                  <div><label style={S.label}>GitHub</label><input style={S.input} value={editProfile.socialGitHub} onChange={e => handleProfileChange("socialGitHub", e.target.value)} placeholder="https://github.com/..." /></div>
+                  <div><label style={S.label}>Portfolio</label><input style={S.input} value={editProfile.socialPortfolio} onChange={e => handleProfileChange("socialPortfolio", e.target.value)} placeholder="https://yourwebsite.com" /></div>
+                  <div><label style={S.label}>LeetCode / HackerRank</label><input style={S.input} value={editProfile.socialLeetCode} onChange={e => handleProfileChange("socialLeetCode", e.target.value)} /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Skills Section */}
+            <div style={{ ...S.card, padding:"24px" }}>
+              <h3 style={{ margin:"0 0 20px", fontSize:18, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Skills</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+                {editProfile.skills.map((sk, i) => (
+                  <div key={i} style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.3)", padding: "6px 12px", borderRadius: 20, fontSize: 13, color: "#e8e0d0", display: "flex", alignItems: "center", gap: 8 }}>
+                    {sk}
+                    <button onClick={() => handleProfileChange("skills", editProfile.skills.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#c9a84c", cursor: "pointer", fontSize: 14, padding: 0, display: "flex", alignItems: "center" }}>×</button>
+                  </div>
+                ))}
+                {editProfile.skills.length === 0 && <span style={{ color: "#555", fontSize: 13 }}>No skills added.</span>}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input style={{ ...S.input, flex: 1 }} placeholder="Add a skill (e.g. React, Python)" onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { if (!editProfile.skills.includes(e.target.value.trim())) { handleProfileChange("skills", [...editProfile.skills, e.target.value.trim()]); } e.target.value = ""; } }} />
+                <button style={{ ...S.btn, padding: "0 20px" }} onClick={e => { const inp = e.target.previousSibling; if (inp.value.trim() && !editProfile.skills.includes(inp.value.trim())) { handleProfileChange("skills", [...editProfile.skills, inp.value.trim()]); inp.value = ""; } }}>Add</button>
+              </div>
+            </div>
+
+            {/* Save Profile Button */}
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button onClick={handleUpdateProfile} disabled={editLoading} style={{ ...S.btn, padding:"12px 32px", fontSize:15, opacity:editLoading?0.7:1 }}>
+                {editLoading ? "Saving Profile..." : "Save All Changes"}
+              </button>
+              {editMsg && <span style={{ fontSize:14, fontWeight: 600, color: editMsg.startsWith("✓")?"#4ade80":"#f87171" }}>{editMsg}</span>}
+            </div>
+
+            {/* Account Settings */}
+            <div style={{ ...S.card, padding:"24px", marginTop: 10 }}>
+              <h3 style={{ margin:"0 0 16px", fontSize:18, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Account Settings</h3>
+              {!user?.avatar ? (
+                <div style={{ display:"flex", flexDirection:"column", gap:12, maxWidth: 400 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 14, color: "#888" }}>Change Password</p>
                   <div><label style={S.label}>Current Password</label><PasswordInput value={cpCurrent} onChange={e => setCpCurrent(e.target.value)} /></div>
                   <div><label style={S.label}>New Password</label><PasswordInput value={cpNew} onChange={e => setCpNew(e.target.value)} /><PasswordStrength password={cpNew} /></div>
                   <div>
@@ -1746,17 +2062,27 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                   </div>
                   {cpMsg && <p style={{ margin:0, fontSize:12, color:cpMsg.startsWith("✓")?"#4ade80":"#f87171" }}>{cpMsg}</p>}
                   <button onClick={handleChangePassword} disabled={cpLoading}
-                    style={{ ...S.btn, padding:"10px 24px", fontSize:13, opacity:cpLoading?0.7:1 }}>
+                    style={{ ...S.btn, padding:"10px 24px", fontSize:13, opacity:cpLoading?0.7:1, alignSelf: "flex-start" }}>
                     {cpLoading ? "Updating…" : "Change Password"}
                   </button>
                 </div>
+              ) : (
+                <p style={{ margin:0, fontSize:13, color:"#555", padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: 8 }}> 
+                  <span style={{ color: "#4285F4", fontWeight: "bold" }}>G</span> You signed in with Google. Password management is handled by your Google account.
+                </p>
+              )}
+              
+              <div style={{ marginTop: 32, borderTop: "1px solid rgba(248,113,113,0.2)", paddingTop: 20 }}>
+                <h4 style={{ margin: "0 0 8px", color: "#f87171", fontSize: 15 }}>Danger Zone</h4>
+                <p style={{ margin: "0 0 12px", color: "#888", fontSize: 13 }}>Once you delete your account, there is no going back. Please be certain.</p>
+                <button onClick={() => {
+                  if (window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) {
+                    fetch(`${API}/auth/delete-account`, { method: "DELETE", headers: authHeader }).then(() => onLogout()).catch(() => alert("Failed to delete account"));
+                  }
+                }} style={{ ...S.btn, background: "transparent", border: "1px solid #f87171", color: "#f87171", padding: "10px 24px", fontSize: 13 }}>Delete Account</button>
               </div>
-            )}
-            {user?.avatar && (
-              <div style={{ ...S.card, padding:"20px 24px" }}>
-                <p style={{ margin:0, fontSize:13, color:"#555" }}> You signed in with Google. Password management is handled by your Google account.</p>
-              </div>
-            )}
+            </div>
+
           </div>
         </div>
       )}
@@ -1890,7 +2216,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                   {user ? (
                     <>
                       {user?.avatar ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:10, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
-                        : <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:"#0a0a14" }}>{user.name?.[0]?.toUpperCase()}</div>}
+                        : <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:"#0a0a14" }}>{user?.name?.[0]?.toUpperCase()}</div>}
                       <div>
                         <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0" }}>{profile?.name||(user?.name || "")}</p>
                         <p style={{ margin:0, fontSize:11, color:"#666" }}>{(user?.email || "")}</p>
