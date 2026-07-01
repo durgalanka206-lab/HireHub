@@ -178,13 +178,13 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
   })();
 
   // Other accounts = saved list minus current user
-  const otherAccounts = savedAccounts.filter(a => a.email !== user.email);
+  const otherAccounts = savedAccounts.filter(a => a.email !== (user?.email || ""));
 
   const removeAccount = (email) => {
     const updated = savedAccounts.filter(a => a.email !== email);
     localStorage.setItem("hh_accounts", JSON.stringify(updated));
     // Force re-render if removed current account
-    if (email === user.email) onLogout();
+    if (email === (user?.email || "")) onLogout();
   };
 
   const switchTo = (acc) => {
@@ -198,12 +198,12 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
       {/* Avatar button */}
       <button
         onClick={() => setOpen(o => !o)}
-        title={user.name}
+        title={(user?.name || "")}
         style={{ background:"none", border: open ? "2px solid #c9a84c" : "2px solid transparent",
           borderRadius:"50%", cursor:"pointer", padding:0, transition:"border .15s", display:"flex",
           alignItems:"center", justifyContent:"center", width:36, height:36, flexShrink:0 }}>
-        {user.avatar
-          ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer"
+        {user?.avatar
+          ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer"
               style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", display:"block" }}
               onError={e => { e.target.style.display="none"; e.target.nextSibling && (e.target.nextSibling.style.display="flex"); }} />
           : <div style={{ width:32, height:32, borderRadius:8,
@@ -230,8 +230,8 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
               <p style={{ margin:"0 0 2px", fontSize:10, color:"#3a3a5a",
                 textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>Signed in as</p>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8 }}>
-                {user.avatar
-                  ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer"
+                {user?.avatar
+                  ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer"
                       style={{ width:38, height:38, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}
                       onError={e => { e.target.onerror=null; e.target.src=""; e.target.style.display="none"; }} />
                   : <div style={{ width:38, height:38, borderRadius:9,
@@ -242,9 +242,9 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
                     </div>}
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#e8e0d0",
-                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.name}</p>
+                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(user?.name || "")}</p>
                   <p style={{ margin:"2px 0 0", fontSize:11, color:"#555",
-                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.email}</p>
+                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(user?.email || "")}</p>
                 </div>
 
               </div>
@@ -593,13 +593,13 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
         <div style={{ padding:"16px", borderTop:"1px solid #1c1c2e" }}>
           {/* User info row */}
           <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px", marginBottom:16, background:"#131320", border:"1px solid #1c1c2e", borderRadius:10 }}>
-            {user.avatar
-              ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
+            {user?.avatar
+              ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
               : <div style={{ width:36, height:36, borderRadius:9, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#07070f", flexShrink:0 }}>
                   {user.name?.[0]?.toUpperCase()}
                 </div>}
             <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.name}</p>
+              <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(user?.name || "")}</p>
               <div style={{ marginTop:2 }}>
                 <span style={{ fontSize:10, color:"#c9a84c", background:"rgba(201,168,76,0.1)", padding:"2px 6px", borderRadius:4, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5, display:"inline-block" }}>Administrator</span>
               </div>
@@ -1249,12 +1249,12 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
   const savedProfile = (() => {
     try {
       if (!initialUser) return null;
-      const stored = JSON.parse(localStorage.getItem(`hh_profile_${initialUser.email}`) || "null");
+      const stored = JSON.parse(localStorage.getItem(`hh_profile_${(initialUser?.email || "guest")}`) || "null");
       if (stored) return stored;
       // Google users get a default profile so they skip upload
       if (initialUser.avatar) {
         const gp = { name: initialUser.name, skills: [], summary: "Google account — upload resume to match skills." };
-        localStorage.setItem(`hh_profile_${initialUser.email}`, JSON.stringify(gp));
+        localStorage.setItem(`hh_profile_${(initialUser?.email || "guest")}`, JSON.stringify(gp));
         return gp;
       }
       return null;
@@ -1314,6 +1314,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
   // Load my applications when tab is active
   const loadMyApps = useCallback(async () => {
+    if (!user || !token) { setMyAppsLoading(false); return; }
     setMyAppsLoading(true);
     try {
       const controller = new AbortController();
@@ -1346,7 +1347,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
   const calcMatch = useCallback((job) => {
     if (!profile?.skills?.length || !job) return 0;
-    const userSkills = profile.skills.map(s => s.toLowerCase());
+    const userSkills = (profile?.skills || []).map(s => s.toLowerCase());
     const matched = (job.tags||[]).filter(t => userSkills.some(u => t.toLowerCase().includes(u)||u.includes(t.toLowerCase())));
     return job.tags?.length ? Math.round((matched.length/job.tags.length)*100) : 0;
   }, [profile]);
@@ -1357,7 +1358,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     const lines = text.split(/\n|\r/).map(l=>l.trim()).filter(Boolean);
     const nameMatch = lines[0]?.match(/^([A-Za-z]+(?: [A-Za-z]+)+)$/);
     return {
-      name: nameMatch?.[1]?.split(" ")[0] || user.name,
+      name: nameMatch?.[1]?.split(" ")[0] || (user?.name || ""),
       skills: [...new Set(found)],
       summary: found.length>0 ? `Skilled in ${found.slice(0,4).join(", ")} and more.` : "No skills detected.",
     };
@@ -1409,13 +1410,13 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       setStep(2);
       const parsed = extractSkills(text);
       setProfile(parsed);
-      try { localStorage.setItem(`hh_profile_${user.email}`, JSON.stringify(parsed)); } catch {}
+      try { localStorage.setItem(`hh_profile_${user?.email || "guest"}`, JSON.stringify(parsed)); } catch {}
       setStep(3);
       setTimeout(() => setPhase("portal"), 800);
     } catch (err) {
       const fallback = extractSkills("");
       setProfile(fallback);
-      try { localStorage.setItem(`hh_profile_${user.email}`, JSON.stringify(fallback)); } catch {}
+      try { localStorage.setItem(`hh_profile_${user?.email || "guest"}`, JSON.stringify(fallback)); } catch {}
       setStep(3);
       setTimeout(() => setPhase("portal"), 800);
     }
@@ -1428,7 +1429,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     if (!resume || !selectedJob) return;
     const matchPct = calcMatch(selectedJob);
     if (matchPct < 40) return;
-    if (!selectedJob._id) { setApplyError("Job data not loaded from database. Please refresh."); return; }
+    if (!selectedJob?._id) { setApplyError("Job data not loaded from database. Please refresh."); return; }
     setApp(true); setApplyError("");
     
     const controller = new AbortController();
@@ -1436,9 +1437,9 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
     try {
       const fd = new FormData();
-      fd.append("jobId", selectedJob._id);
-      fd.append("candidateName", profile?.name||user.name);
-      fd.append("candidateEmail", user.email);
+      fd.append("jobId", selectedJob?._id);
+      fd.append("candidateName", profile?.name||(user?.name || ""));
+      fd.append("candidateEmail", (user?.email || ""));
       fd.append("skills", (profile?.skills||[]).join(","));
       fd.append("matchPercent", matchPct);
       fd.append("coverLetter", coverNote||"");
@@ -1447,7 +1448,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       clearTimeout(timeoutId);
       const data = await res.json();
       if (!data.success) { setApplyError("" + data.message); return; }
-      setApplied(prev => ({...prev, [selectedJob._id]:true}));
+      setApplied(prev => ({...prev, [selectedJob?._id]:true}));
       setCover(""); setApplyError(""); setSuccessJob(selectedJob); 
       setPhase("success");
     } catch (err) {
@@ -1522,7 +1523,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
         <div style={{ ...S.card, padding:36, textAlign:"center" }}>
           <h2 style={{ margin:"0 0 8px", fontSize:22 }}>{profile ? "Update Your Resume" : "Upload Your Resume"}</h2>
           <p style={{ color:"#555", margin:"0 0 30px", fontSize:14 }}>
-            {profile ? `Replacing resume for ${user.name} · Upload new PDF or DOCX to refresh skills` : "We'll extract your skills and match jobs for you"}
+            {profile ? `Replacing resume for ${(user?.name || "")} · Upload new PDF or DOCX to refresh skills` : "We'll extract your skills and match jobs for you"}
           </p>
           <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:8, marginBottom:28 }}>
             {["Upload","Parsing","Matching"].map((s,i) => (
@@ -1710,13 +1711,13 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
             {/* Profile card */}
             <div style={{ ...S.card, padding:"24px", marginBottom:16 }}>
               <div style={{ display:"flex", gap:16, alignItems:"center", marginBottom:20 }}>
-                {user.avatar ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width:60, height:60, borderRadius:14, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
+                {user?.avatar ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:60, height:60, borderRadius:14, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
                   : <div style={{ width:60, height:60, borderRadius:14, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:700, color:"#0a0a14" }}>{user.name?.[0]?.toUpperCase()}</div>}
                 <div>
-                  <p style={{ margin:"0 0 4px", fontSize:18, fontWeight:700, color:"#e8e0d0" }}>{user.name}</p>
-                  <p style={{ margin:"0 0 4px", fontSize:13, color:"#888" }}>{user.email}</p>
+                  <p style={{ margin:"0 0 4px", fontSize:18, fontWeight:700, color:"#e8e0d0" }}>{(user?.name || "")}</p>
+                  <p style={{ margin:"0 0 4px", fontSize:13, color:"#888" }}>{(user?.email || "")}</p>
                   <span style={{ background:"rgba(96,165,250,.15)", color:"#60a5fa", borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}>
-                    {user.role==="admin" ? "Administrator" : "Member"}
+                    {user?.role==="admin" ? "Administrator" : "Member"}
                   </span>
                 </div>
               </div>
@@ -1732,7 +1733,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
             </div>
 
             {/* Change password — only for non-Google users */}
-            {!user.avatar && (
+            {!user?.avatar && (
               <div style={{ ...S.card, padding:"24px" }}>
                 <h3 style={{ margin:"0 0 16px", fontSize:15, color:"#e8e0d0" }}>Change Password</h3>
                 <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -1751,7 +1752,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                 </div>
               </div>
             )}
-            {user.avatar && (
+            {user?.avatar && (
               <div style={{ ...S.card, padding:"20px 24px" }}>
                 <p style={{ margin:0, fontSize:13, color:"#555" }}> You signed in with Google. Password management is handled by your Google account.</p>
               </div>
@@ -1823,18 +1824,18 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               </div>
             ) : (<>
               <div style={{ display:"flex", gap:18, alignItems:"flex-start", marginBottom:24 }}>
-                <div style={{ width:64, height:64, borderRadius:12, background:selectedJob.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:800, color:"#fff" }}>{selectedJob.logo}</div>
+                <div style={{ width:64, height:64, borderRadius:12, background:selectedJob?.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:800, color:"#fff" }}>{selectedJob?.logo}</div>
                 <div style={{ flex:1 }}>
-                  <h2 style={{ fontFamily:"'Cormorant Garamond',serif", margin:0, fontSize:28, fontWeight:600, color:"#e8e0d0", marginBottom:8 }}>{selectedJob.title}</h2>
+                  <h2 style={{ fontFamily:"'Cormorant Garamond',serif", margin:0, fontSize:28, fontWeight:600, color:"#e8e0d0", marginBottom:8 }}>{selectedJob?.title}</h2>
                   <div style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
-                    <span style={{ fontSize:14, color:"#c9a84c", fontWeight:500 }}>{selectedJob.company}</span>
+                    <span style={{ fontSize:14, color:"#c9a84c", fontWeight:500 }}>{selectedJob?.company}</span>
                     <span style={{ fontSize:12, color:"#6b7280" }}>•</span>
-                    <span style={{ fontSize:13, color:"#9ca3af" }}>{selectedJob.location}</span>
-                    <span style={{ fontSize:12, background:"#1a1a2a", padding:"4px 10px", borderRadius:16, color:"#9ca3af" }}>{selectedJob.type}</span>
+                    <span style={{ fontSize:13, color:"#9ca3af" }}>{selectedJob?.location}</span>
+                    <span style={{ fontSize:12, background:"#1a1a2a", padding:"4px 10px", borderRadius:16, color:"#9ca3af" }}>{selectedJob?.type}</span>
                   </div>
                 </div>
                 <div style={{ textAlign:"right" }}>
-                  <p style={{ margin:0, fontSize:20, fontWeight:600, color:"#c9a84c", marginBottom:4 }}>{convertToLPA(selectedJob.salary)}</p>
+                  <p style={{ margin:0, fontSize:20, fontWeight:600, color:"#c9a84c", marginBottom:4 }}>{convertToLPA(selectedJob?.salary)}</p>
                   <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#1a1a2a", padding:"6px 12px", borderRadius:20 }}>
                     <span style={{ fontSize:14, fontWeight:600, color:matchColor(matchPct) }}>{matchPct}%</span>
                     <span style={{ fontSize:11, color:"#9ca3af" }}>Match</span>
@@ -1844,7 +1845,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               <div style={{ marginBottom:24 }}>
                 <h4 style={{ fontSize:12, fontWeight:600, color:"#9ca3af", textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Skills Required</h4>
                 <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                  {(selectedJob.tags||[]).map(t => {
+                  {(selectedJob?.tags||[]).map(t => {
                     const has = profile?.skills?.some(s => t.toLowerCase().includes(s.toLowerCase())||s.toLowerCase().includes(t.toLowerCase()));
                     return (
                       <span key={t} style={{ padding:"6px 14px", borderRadius:20, fontSize:13, fontWeight:500,
@@ -1857,17 +1858,17 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                   })}
                 </div>
               </div>
-              {selectedJob.desc && (
+              {selectedJob?.desc && (
                 <div style={{ marginBottom:24, background:"#0f0f1a", border:"1px solid #2a2a3e", borderRadius:12, padding:"20px" }}>
                   <h4 style={{ fontSize:12, fontWeight:600, color:"#9ca3af", textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>About the Role</h4>
-                  <p style={{ margin:0, fontSize:14, lineHeight:1.8, color:"#d1d5db" }}>{selectedJob.desc}</p>
+                  <p style={{ margin:0, fontSize:14, lineHeight:1.8, color:"#d1d5db" }}>{selectedJob?.desc}</p>
                 </div>
               )}
-              {(selectedJob.requirements||[]).length > 0 && (
+              {(selectedJob?.requirements||[]).length > 0 && (
                 <div style={{ marginBottom:24 }}>
                   <h4 style={{ fontSize:12, fontWeight:600, color:"#9ca3af", textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Requirements</h4>
                   <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {selectedJob.requirements.map((r,i) => (
+                    {selectedJob?.requirements.map((r,i) => (
                       <div key={i} style={{ display:"flex", gap:12, alignItems:"center", background:"#0f0f1a", border:"1px solid #2a2a3e", borderRadius:8, padding:"12px 16px" }}>
                         <span style={{ width:20, height:20, borderRadius:"50%", background:"#1a1a2a", color:"#c9a84c", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:600, flexShrink:0 }}>{i+1}</span>
                         <span style={{ fontSize:13, color:"#d1d5db" }}>{r}</span>
@@ -1888,11 +1889,11 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                 <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                   {user ? (
                     <>
-                      {user.avatar ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:10, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
+                      {user?.avatar ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:10, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
                         : <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:"#0a0a14" }}>{user.name?.[0]?.toUpperCase()}</div>}
                       <div>
-                        <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0" }}>{profile?.name||user.name}</p>
-                        <p style={{ margin:0, fontSize:11, color:"#666" }}>{user.email}</p>
+                        <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0" }}>{profile?.name||(user?.name || "")}</p>
+                        <p style={{ margin:0, fontSize:11, color:"#666" }}>{(user?.email || "")}</p>
                       </div>
                     </>
                   ) : (
@@ -1930,7 +1931,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                   </div>
                 </div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-                  {(selectedJob.tags||[]).filter(t => profile?.skills?.some(s => t.toLowerCase().includes(s.toLowerCase())||s.toLowerCase().includes(t.toLowerCase()))).map(t => (
+                  {(selectedJob?.tags||[]).filter(t => profile?.skills?.some(s => t.toLowerCase().includes(s.toLowerCase())||s.toLowerCase().includes(t.toLowerCase()))).map(t => (
                     <span key={t} style={{ fontSize:10, padding:"3px 8px", borderRadius:12, background:"rgba(16,185,129,0.08)", color:"#10b981", border:"1px solid rgba(16,185,129,0.2)" }}>✓ {t}</span>
                   ))}
                   {matchPct===0 && <span style={{ fontSize:10, color:"#333", fontStyle:"italic" }}>Upload resume to see matches</span>}
@@ -1978,20 +1979,20 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               {profile?.skills?.length > 0 && (
                 <div style={{ padding:"18px", borderBottom:"1px solid #2a2a3e" }}>
                   <h4 style={{ fontSize:11, fontWeight:600, color:"#9ca3af", textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>
-                    Skills <span style={{ color:"#6b7280", fontWeight:400 }}>({profile.skills.length})</span>
+                    Skills <span style={{ color:"#6b7280", fontWeight:400 }}>({(profile?.skills || []).length})</span>
                   </h4>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                    {profile.skills.slice(0,10).map(s => (
+                    {(profile?.skills || []).slice(0,10).map(s => (
                       <span key={s} style={{ fontSize:11, padding:"3px 8px", borderRadius:12, background:"#1a1a2a", color:"#9ca3af", border:"1px solid #2a2a3e" }}>{s}</span>
                     ))}
-                    {profile.skills.length > 10 && <span style={{ fontSize:11, padding:"3px 8px", color:"#555" }}>+{profile.skills.length-10} more</span>}
+                    {(profile?.skills || []).length > 10 && <span style={{ fontSize:11, padding:"3px 8px", color:"#555" }}>+{(profile?.skills || []).length-10} more</span>}
                   </div>
                 </div>
               )}
               <div style={{ padding:"18px", borderBottom:"1px solid #2a2a3e" }}>
                 <h4 style={{ fontSize:11, fontWeight:600, color:"#9ca3af", textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Cover Note <span style={{ color:"#555", textTransform:"none", fontWeight:400 }}>(optional)</span></h4>
                 <textarea value={coverNote} onChange={e => setCover(e.target.value)}
-                  placeholder={`Message to ${selectedJob.company}…`} rows={3}
+                  placeholder={`Message to ${selectedJob?.company}…`} rows={3}
                   style={{ width:"100%", background:"#1a1a2a", border:"1px solid #2a2a3e", borderRadius:8, padding:"10px", color:"#e8e0d0", fontSize:13, lineHeight:1.6, resize:"vertical", outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
               </div>
               <div style={{ padding:"18px" }}>

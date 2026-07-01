@@ -19,6 +19,7 @@ if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 // Use CLIENT_URL env var — never hardcode localhost in production
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://localhost:3001",
   "https://hirehub.vercel.app",
   "https://hirehub-silk.vercel.app",
   "https://hirehubx.vercel.app"
