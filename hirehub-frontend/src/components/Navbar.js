@@ -21,12 +21,12 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setOpen(o => !o)}
-        title={user.name}
+        title={(user?.name || "")}
         style={{ background:"none", border: open ? "2px solid var(--color-gold-soft)" : "2px solid transparent",
           borderRadius:"50%", cursor:"pointer", padding:0, transition:"var(--transition-fast)", display:"flex",
           alignItems:"center", justifyContent:"center", width:36, height:36, flexShrink:0 }}>
-        {user.avatar
-          ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer"
+        {user?.avatar
+          ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer"
               style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", display:"block" }}
               onError={e => { e.target.style.display="none"; e.target.nextSibling && (e.target.nextSibling.style.display="flex"); }} />
           : <div style={{ width:32, height:32, borderRadius:8,
@@ -54,8 +54,8 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
               <p style={{ margin:"0 0 2px", fontSize:10, color:"var(--color-text-secondary)",
                 textTransform:"uppercase", letterSpacing:1.5, fontWeight:600 }}>Signed in as</p>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8 }}>
-                {user.avatar
-                  ? <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer"
+                {user?.avatar
+                  ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer"
                       style={{ width:38, height:38, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}
                       onError={e => { e.target.onerror=null; e.target.src=""; e.target.style.display="none"; }} />
                   : <div style={{ width:38, height:38, borderRadius:9,
@@ -66,9 +66,9 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
                     </div>}
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--color-text-primary)",
-                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.name}</p>
+                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(user?.name || "")}</p>
                   <p style={{ margin:"2px 0 0", fontSize:11, color:"var(--color-text-muted)",
-                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.email}</p>
+                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(user?.email || "")}</p>
                 </div>
               </div>
             </div>
