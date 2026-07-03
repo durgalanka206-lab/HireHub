@@ -118,7 +118,9 @@ router.post("/extract-skills", protect, upload.single("resume"), async (req, res
 router.post("/", protect, upload.single("resume"), async (req, res) => {
   try {
     const { jobId, candidateName, candidateEmail, skills, matchPercent, coverLetter } = req.body;
-    if (!req.file) return res.status(400).json({ success: false, message: "Resume PDF is required." });
+    if (!req.file && !req.user?.resumeFilename) {
+      return res.status(400).json({ success: false, message: "Resume PDF is required. Upload one or save it in your profile." });
+    }
     if (!jobId)   return res.status(400).json({ success: false, message: "Job ID is required." });
 
     const existing = await Application.findOne({ jobId, candidateEmail });
@@ -131,7 +133,7 @@ router.post("/", protect, upload.single("resume"), async (req, res) => {
       skills:         skills ? skills.split(",").map(s => s.trim()).filter(Boolean) : [],
       matchPercent:   Number(matchPercent) || 0,
       coverLetter:    coverLetter || "",
-      resumeFilename: req.file.filename,
+      resumeFilename: req.file ? req.file.filename : req.user.resumeFilename,
       status:         "applied",
     });
 

@@ -50,22 +50,46 @@ const companies = [
   { name: 'Airtel', domain: 'airtel.in' }
 ];
 
-const roles = ['Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'Data Scientist', 'DevOps Engineer', 'Product Manager', 'UX Designer', 'Machine Learning Engineer', 'Systems Analyst', 'Cloud Architect', 'Security Engineer', 'QA Tester', 'Mobile Developer', 'Database Administrator'];
-const locations = ['Bangalore, India', 'Hyderabad, India', 'Pune, India', 'Mumbai, India', 'Delhi, India', 'Chennai, India', 'Remote', 'San Francisco, CA', 'New York, NY', 'Seattle, WA', 'London, UK', 'Berlin, Germany'];
+const locations = [
+  'Bangalore', 'Hyderabad', 'Chennai', 'Pune', 'Mumbai', 'Noida', 'Gurgaon', 
+  'Kochi', 'Ahmedabad', 'Kolkata', 'Vijayawada', 'Visakhapatnam', 'Remote (India)', 'Hybrid'
+];
+
 const types = ['Full-time', 'Part-time', 'Internship', 'Contract'];
 const expLevels = ['Fresher', '1-3 years', '3-5 years', '5-10 years', '10+ years'];
-const skillSets = [
-  ['React', 'JavaScript', 'HTML', 'CSS', 'Node.js'],
-  ['Python', 'Django', 'PostgreSQL', 'AWS'],
-  ['Java', 'Spring Boot', 'Microservices', 'Kubernetes'],
-  ['C++', 'Algorithms', 'Data Structures', 'Linux'],
-  ['Go', 'Docker', 'GCP', 'Redis'],
-  ['Machine Learning', 'Python', 'TensorFlow', 'PyTorch'],
-  ['Swift', 'iOS', 'Objective-C', 'Xcode'],
-  ['Kotlin', 'Android', 'Java', 'Firebase'],
-  ['Data Analysis', 'SQL', 'Tableau', 'Excel'],
-  ['DevOps', 'CI/CD', 'Jenkins', 'Ansible', 'Terraform']
+
+const roleProfiles = [
+  { role: 'Frontend Developer', skills: ['React', 'JavaScript', 'HTML', 'CSS', 'TypeScript'] },
+  { role: 'Backend Developer', skills: ['Node.js', 'Express', 'MongoDB', 'PostgreSQL', 'Redis'] },
+  { role: 'Full Stack Developer', skills: ['React', 'Node.js', 'MongoDB', 'JavaScript', 'AWS'] },
+  { role: 'Java Developer', skills: ['Java', 'Spring Boot', 'Microservices', 'Hibernate', 'SQL'] },
+  { role: 'Python Developer', skills: ['Python', 'Django', 'Flask', 'PostgreSQL', 'Docker'] },
+  { role: 'Data Analyst', skills: ['SQL', 'Excel', 'Power BI', 'Python', 'Tableau'] },
+  { role: 'Data Scientist', skills: ['Python', 'Machine Learning', 'TensorFlow', 'SQL', 'Pandas'] },
+  { role: 'Application Support Engineer', skills: ['SQL', 'Linux', 'Troubleshooting', 'Shell Scripting'] },
+  { role: 'DevOps Engineer', skills: ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Terraform'] },
+  { role: 'Cloud Architect', skills: ['AWS', 'Azure', 'System Design', 'Kubernetes', 'Networking'] },
+  { role: 'Machine Learning Engineer', skills: ['Python', 'PyTorch', 'TensorFlow', 'NLP', 'Computer Vision'] },
+  { role: 'Mobile Developer', skills: ['React Native', 'Swift', 'Kotlin', 'Firebase', 'Mobile UI'] }
 ];
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateSalary(type, exp) {
+  if (type === 'Internship') {
+    return `₹${getRandomInt(20, 150)}K / month`;
+  }
+  
+  if (exp === 'Fresher') return `₹${getRandomInt(3, 12)} LPA`;
+  if (exp === '1-3 years') return `₹${getRandomInt(5, 15)} LPA`;
+  if (exp === '3-5 years') return `₹${getRandomInt(10, 25)} LPA`;
+  if (exp === '5-10 years') return `₹${getRandomInt(20, 60)} LPA`;
+  if (exp === '10+ years') return `₹${getRandomInt(35, 80)} LPA`;
+  
+  return `₹10 - ₹20 LPA`;
+}
 
 const downloadImage = (url, filepath) => {
   return new Promise((resolve, reject) => {
@@ -89,41 +113,60 @@ module.exports = async function runSeed() {
   }
 
   const jobs = [];
+  const generatedCombos = new Set();
+  let tries = 0;
   
-  for (let i = 0; i < 150; i++) {
+  while(jobs.length < 150 && tries < 1000) {
+    tries++;
     const company = companies[Math.floor(Math.random() * companies.length)];
+    const roleProfile = roleProfiles[Math.floor(Math.random() * roleProfiles.length)];
+    const location = locations[Math.floor(Math.random() * locations.length)];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const isIntern = type === 'Internship';
+    const exp = isIntern ? 'Fresher' : expLevels[Math.floor(Math.random() * expLevels.length)];
     
-    const logoFilename = `${company.name.toLowerCase().replace(/\\s+/g, '-')}.png`;
+    let title = roleProfile.role;
+    if (isIntern) title += ' Intern';
+    else if (exp === '10+ years') title = `Lead ${title}`;
+    else if (exp === '5-10 years') title = `Senior ${title}`;
+    else if (exp === 'Fresher') title = `Junior ${title}`;
+
+    const comboKey = `${company.name}-${title}-${location}`;
+    if (generatedCombos.has(comboKey)) continue;
+    generatedCombos.add(comboKey);
+
+    const logoFilename = `${company.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.png`;
     const logoPath = path.join(logosDir, logoFilename);
+    
+    // We only download if the file doesn't exist to speed up
     if (!fs.existsSync(logoPath)) {
       try {
         await downloadImage(`https://logo.clearbit.com/${company.domain}`, logoPath);
       } catch (e) {}
     }
 
-    const role = roles[Math.floor(Math.random() * roles.length)];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const location = locations[Math.floor(Math.random() * locations.length)];
-    const exp = expLevels[Math.floor(Math.random() * expLevels.length)];
-    const skills = skillSets[Math.floor(Math.random() * skillSets.length)];
-    const salary = `₹${Math.floor(Math.random() * 20 + 5)} - ₹${Math.floor(Math.random() * 40 + 25)} LPA`;
+    const salary = generateSalary(type, exp);
+    const datePosted = new Date();
+    datePosted.setDate(datePosted.getDate() - Math.floor(Math.random() * 30));
 
     jobs.push({
-      title: `${type === 'Internship' ? role + ' Intern' : role}`,
+      title: title,
       company: company.name,
       location: location,
       type: type,
       salary: salary,
       experience: exp,
-      skills: skills,
-      description: `We are looking for a highly skilled ${role} to join our team at ${company.name}. You will be responsible for developing high-quality software solutions and collaborating with cross-functional teams.`,
+      tags: roleProfile.skills,
+      desc: `We are looking for a highly skilled ${title} to join our team at ${company.name}. You will be responsible for developing high-quality software solutions and collaborating with cross-functional teams in a fast-paced environment.`,
       requirements: [
-        `Experience in ${skills[0]} and ${skills[1]}`,
-        'Strong problem-solving skills',
-        'Ability to work independently and in a team',
-        'Excellent communication skills'
+        `Proficiency in ${roleProfile.skills[0]} and ${roleProfile.skills[1]}`,
+        `Experience level: ${exp}`,
+        'Strong problem-solving skills and analytical thinking',
+        'Ability to work independently and collaboratively in a team',
+        'Excellent communication and interpersonal skills'
       ],
-      logo: `/logos/${logoFilename}`
+      logo: `/logos/${logoFilename}`,
+      createdAt: datePosted
     });
   }
 

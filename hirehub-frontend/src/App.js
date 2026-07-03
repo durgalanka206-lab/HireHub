@@ -165,6 +165,54 @@ function DonutChart({ data }) {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════
+   COMPANY LOGO — renders <img> for path-based logos, falls back to initials
+══════════════════════════════════════════════════════════════ */
+function CompanyLogo({ job, size = 44, style = {} }) {
+  const [err, setErr] = useState(false);
+  const logoPath = job?.logo;
+  const isImagePath = logoPath && (logoPath.startsWith('/') || logoPath.startsWith('http') || logoPath.includes('.'));
+
+  if (isImagePath && !err) {
+    return (
+      <img
+        src={logoPath}
+        alt={job?.company || 'Company logo'}
+        onError={() => setErr(true)}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: Math.round(size * 0.27),
+          objectFit: "contain",
+          flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+          ...style
+        }}
+      />
+    );
+  }
+
+  const initial = job?.company ? job.company.charAt(0).toUpperCase() : "J";
+  return (
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: Math.round(size * 0.27),
+      background: job?.color || "#1e1e2f",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: Math.round(size * 0.4),
+      fontWeight: 800,
+      color: "#fff",
+      flexShrink: 0,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+      ...style
+    }}>
+      {initial}
+    </div>
+  );
+}
 
 /* ══════════════════════════════════════════════════════════════
    ACCOUNT DROPDOWN — profile pic click → shows account switcher
@@ -1195,7 +1243,7 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
                     <div key={job._id} style={{ background:"#0b0b17", border:"1px solid #141428", borderRadius:12, padding:"16px 20px", display:"flex", alignItems:"center", gap:16, transition:"border-color .2s" }}
                       onMouseOver={e => e.currentTarget.style.borderColor="#2a2a3e"}
                       onMouseOut={e => e.currentTarget.style.borderColor="#141428"}>
-                      <div style={{ width:44, height:44, borderRadius:10, background:job.color||"#635BFF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:800, color:"#fff", flexShrink:0 }}>{job.logo||"J"}</div>
+                      <CompanyLogo job={job} size={44} />
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
                           <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#d4cfc8" }}>{job?.title}</p>
@@ -1511,7 +1559,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
   const doApply = async () => {
     if (!user) { onShowAuth('login'); return; }
-    if (!resume || !selectedJob) return;
+    if ((!resume && !user?.resumeFilename) || !selectedJob) return;
     const matchPct = calcMatch(selectedJob);
     if (matchPct < 40) return;
     if (!selectedJob?._id) { setApplyError("Job data not loaded from database. Please refresh."); return; }
@@ -1528,7 +1576,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       fd.append("skills", (profile?.skills||[]).join(","));
       fd.append("matchPercent", matchPct);
       fd.append("coverLetter", coverNote||"");
-      fd.append("resume", resume);
+      if (resume) fd.append("resume", resume);
       const res = await fetch(`${API}/applications`, { method:"POST", headers: authHeader, body: fd, signal: controller.signal });
       clearTimeout(timeoutId);
       const data = await res.text().then(t => { try { return t ? JSON.parse(t) : { success: false, message: 'Empty response' }; } catch(e) { return { success: false, message: 'Invalid JSON response' }; } });
@@ -1800,7 +1848,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                     <div key={app._id} style={{ background:"#13131f", border:"1px solid #2a2a3e", borderRadius:14, padding:"20px 24px", display:"flex", alignItems:"center", gap:18, transition:"border-color .2s" }}
                       onMouseOver={e => e.currentTarget.style.borderColor="#c9a84c"}
                       onMouseOut={e => e.currentTarget.style.borderColor="#2a2a3e"}>
-                      <div style={{ width:50, height:50, borderRadius:12, background:job?.color||"#635BFF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:"#fff", flexShrink:0 }}>{job?.logo||"J"}</div>
+                      <CompanyLogo job={job} size={50} />
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ margin:"0 0 4px", fontSize:15, fontWeight:700, color:"#e8e0d0" }}>{job?.title||"Job"}</p>
                         <p style={{ margin:0, fontSize:13, color:"#666" }}>{job?.company} · {job?.location}</p>
@@ -2150,7 +2198,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               </div>
             ) : (<>
               <div style={{ display:"flex", gap:18, alignItems:"flex-start", marginBottom:24 }}>
-                <div style={{ width:64, height:64, borderRadius:12, background:selectedJob?.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:800, color:"#fff" }}>{selectedJob?.logo}</div>
+                <CompanyLogo job={selectedJob} size={64} />
                 <div style={{ flex:1 }}>
                   <h2 style={{ fontFamily:"'Cormorant Garamond',serif", margin:0, fontSize:28, fontWeight:600, color:"#e8e0d0", marginBottom:8 }}>{selectedJob?.title}</h2>
                   <div style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
@@ -2274,12 +2322,14 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                     ↑ Upload new
                   </button>
                 </div>
-                {resume ? (
+                {resume || user?.resumeFilename ? (
                   <div style={{ display:"flex", gap:10, alignItems:"center", background:"rgba(201,168,76,0.06)",
                     border:"1px solid rgba(201,168,76,0.2)", borderRadius:8, padding:"10px 12px" }}>
                     <span style={{ fontSize:18 }}>📄</span>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ margin:0, fontSize:12, fontWeight:600, color:"#c9a84c", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{resume.name}</p>
+                      <p style={{ margin:0, fontSize:12, fontWeight:600, color:"#c9a84c", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {resume ? resume.name : (user?.resumeOriginalName || user?.resumeFilename.split('-').slice(1).join('-') || "Saved Resume.pdf")}
+                      </p>
                       <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>PDF / DOCX · Ready to submit</p>
                     </div>
                   </div>
@@ -2368,6 +2418,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("token");
     if (t) {
+      // Google OAuth callback with token in URL
       fetch(`${API}/auth/google-success`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({token:t}) })
         .then(r => r.json())
         .then(d => {
@@ -2379,8 +2430,24 @@ export default function App() {
           }
         })
         .catch(err => console.error("Google auth error:", err));
+    } else if (savedToken) {
+      // Refresh user data from DB on every page load so resume, profile, skills are always fresh
+      fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${savedToken}` } })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && d.user) {
+            localStorage.setItem("hh_user", JSON.stringify(d.user));
+            setUser(d.user);
+          } else {
+            // Token is invalid/expired — clear session
+            localStorage.removeItem("hh_token");
+            localStorage.removeItem("hh_user");
+            setUser(null); setToken(null);
+          }
+        })
+        .catch(() => { /* Network error – keep cached user */ });
     }
-  }, []);
+  }, []); // run once on mount
 
   const handleLogin = (u, t) => {
     setUser(u); setToken(t);

@@ -107,17 +107,43 @@ const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
 
 // ── Google OAuth ──────────────────────────────────────────────
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" }));
+// Capture the frontend origin in a state param so the callback can
+// redirect back to wherever the user started (localhost OR Vercel).
+router.get("/google", (req, res, next) => {
+  const referer = req.get('Referer') || req.get('Origin') || '';
+  // Determine frontend origin from referer/origin; fall back to env
+  let frontendOrigin = process.env.CLIENT_URL || 'https://hirehub-silk.vercel.app';
+  if (referer.includes('localhost') || referer.includes('127.0.0.1')) {
+    frontendOrigin = 'http://localhost:3000';
+  }
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+    state: Buffer.from(frontendOrigin).toString('base64'),
+  })(req, res, next);
+});
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: `${process.env.CLIENT_URL || "https://hirehub-silk.vercel.app"}/login?error=google_auth_failed`,
-    session: false,
-  }),
+  passport.authenticate("google", { session: false, failureMessage: true }),
   (req, res) => {
-    const token = signToken(req.user._id);
-    res.redirect(`${process.env.CLIENT_URL || "https://hirehub-silk.vercel.app"}/auth/google-success?token=${token}`);
+    try {
+      // Decode origin from state param
+      const stateRaw = req.query.state || '';
+      let frontendOrigin;
+      try {
+        frontendOrigin = Buffer.from(stateRaw, 'base64').toString('utf8');
+        // Validate it is actually a URL
+        new URL(frontendOrigin);
+      } catch (_) {
+        frontendOrigin = process.env.CLIENT_URL || 'https://hirehub-silk.vercel.app';
+      }
+      const token = signToken(req.user._id);
+      res.redirect(`${frontendOrigin}/auth/google-success?token=${token}`);
+    } catch (err) {
+      console.error('Google callback error:', err);
+      res.redirect(`${process.env.CLIENT_URL || 'https://hirehub-silk.vercel.app'}/login?error=google_auth_failed`);
+    }
   }
 );
 
@@ -136,6 +162,23 @@ router.post("/google-success", async (req, res) => {
     });
   } catch (err) {
     res.status(401).json({ success: false, message: "Invalid token" });
+  }
+});
+
+// GET /api/auth/me — return fresh user data from DB (for session restore on page load)
+router.get("/me", async (req, res) => {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) return res.status(401).json({ success: false, message: "Not authenticated." });
+    const decoded = jwt.verify(auth.split(" ")[1], process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+    const userObj = user.toObject();
+    delete userObj.password;
+    userObj.id = userObj._id;
+    res.json({ success: true, user: userObj });
+  } catch (err) {
+    res.status(401).json({ success: false, message: "Invalid or expired token." });
   }
 });
 
