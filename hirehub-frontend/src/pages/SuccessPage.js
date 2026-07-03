@@ -13,6 +13,50 @@ const convertToLPA = (salaryStr) => {
   return `₹${minLPA} – ₹${maxLPA} LPA`;
 };
 
+function SuccessCompanyLogo({ job, size = 46 }) {
+  const [err, setErr] = React.useState(false);
+  const logoPath = job?.logo;
+  const isImagePath = logoPath && (logoPath.startsWith('/') || logoPath.startsWith('http') || logoPath.includes('.'));
+
+  if (isImagePath && !err) {
+    return (
+      <img
+        src={logoPath}
+        alt={job?.company || 'Company logo'}
+        onError={() => setErr(true)}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: Math.round(size * 0.27),
+          objectFit: "contain",
+          flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.18)"
+        }}
+      />
+    );
+  }
+
+  const initial = job?.company ? job.company.charAt(0).toUpperCase() : "J";
+  return (
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: Math.round(size * 0.27),
+      background: job?.color || "#1e1e2f",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: Math.round(size * 0.4),
+      fontWeight: 800,
+      color: "#fff",
+      flexShrink: 0,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.18)"
+    }}>
+      {initial}
+    </div>
+  );
+}
+
 export default function SuccessPage({ job, profile, onHome }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ minHeight:"100vh", background:"var(--color-bg-base)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px 20px" }}>
@@ -35,7 +79,7 @@ export default function SuccessPage({ job, profile, onHome }) {
 
         <motion.div className="glass-card" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} style={{ ...S.card, padding:"18px 20px", marginBottom:14 }}>
           <div style={{ display:"flex", gap:14, alignItems:"center", marginBottom:14, paddingBottom:14, borderBottom:"1px solid var(--color-border)" }}>
-            <div style={{ width:46, height:46, borderRadius:11, background:job.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:800, color:"#fff", flexShrink:0 }}>{job.logo}</div>
+            <SuccessCompanyLogo job={job} size={46} />
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ margin:0, fontWeight:700, fontSize:15, color:"var(--color-text-primary)" }}>{job.title}</p>
               <p style={{ margin:"3px 0 0", fontSize:12, color:"var(--color-text-muted)" }}>{job.company} · {job.location}</p>
