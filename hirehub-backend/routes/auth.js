@@ -357,7 +357,11 @@ router.post("/upload-resume", upload.single("resume"), async (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No resume uploaded." });
 
     if (user.resumeFilename) {
-      try { fs.unlinkSync(path.join("uploads", user.resumeFilename)); } catch {}
+      const Application = require("../models/Application");
+      const isUsed = await Application.exists({ resumeFilename: user.resumeFilename });
+      if (!isUsed) {
+        try { fs.unlinkSync(path.join("uploads", user.resumeFilename)); } catch {}
+      }
     }
 
     user.resumeFilename = req.file.filename;
@@ -384,7 +388,11 @@ router.delete("/delete-resume", async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: "User not found." });
 
     if (user.resumeFilename) {
-      try { fs.unlinkSync(path.join("uploads", user.resumeFilename)); } catch {}
+      const Application = require("../models/Application");
+      const isUsed = await Application.exists({ resumeFilename: user.resumeFilename });
+      if (!isUsed) {
+        try { fs.unlinkSync(path.join("uploads", user.resumeFilename)); } catch {}
+      }
     }
     user.resumeFilename = "";
     user.resumeOriginalName = "";
