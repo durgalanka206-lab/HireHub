@@ -1566,7 +1566,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     setApp(true); setApplyError("");
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
       const fd = new FormData();
@@ -1586,6 +1586,8 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
           loadMyApps();
           setApplyError("");
           setApp(false);
+          setSuccessJob(selectedJob);
+          setPhase("success");
           return;
         }
         setApplyError("" + data.message); 
