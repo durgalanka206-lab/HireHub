@@ -188,15 +188,20 @@ router.get("/my", protect, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
-// GET /api/applications  — admin: get all
-// ══════════════════════════════════════════════════════════════
 router.get("/", protect, adminOnly, async (req, res) => {
   try {
     const filter = {};
     if (req.query.status && req.query.status !== "all") filter.status = req.query.status;
-    if (req.query.jobId && req.query.jobId !== "all") filter.jobId = req.query.jobId;
+    if (req.query.jobId && req.query.jobId !== "all") {
+      const mongoose = require("mongoose");
+      if (!mongoose.Types.ObjectId.isValid(req.query.jobId)) {
+        return res.status(400).json({ success: false, message: "Invalid jobId format." });
+      }
+      filter.jobId = req.query.jobId;
+    }
     if (req.query.search) {
-      const rx = new RegExp(req.query.search, "i");
+      const escapedSearch = req.query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escapedSearch, "i");
       filter.$or = [{ candidateName: rx }, { candidateEmail: rx }];
     }
     const apps = await Application.find(filter)
@@ -204,6 +209,9 @@ router.get("/", protect, adminOnly, async (req, res) => {
       .sort({ matchPercent: -1, createdAt: -1 });
     res.json({ success: true, data: apps });
   } catch (err) {
+    if (err.name === "CastError" || err instanceof SyntaxError) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 });
