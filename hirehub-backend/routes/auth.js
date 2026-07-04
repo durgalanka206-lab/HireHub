@@ -112,7 +112,7 @@ const signToken = (id) =>
 router.get("/google", (req, res, next) => {
   const referer = req.get('Referer') || req.get('Origin') || '';
   // Determine frontend origin from referer/origin; fall back to env
-  let frontendOrigin = process.env.CLIENT_URL || 'https://hirehub-silk.vercel.app';
+  let frontendOrigin = process.env.CLIENT_URL || 'https://hirehubx.vercel.app';
   if (referer.includes('localhost') || referer.includes('127.0.0.1')) {
     frontendOrigin = 'http://localhost:3000';
   }
@@ -136,13 +136,13 @@ router.get(
         // Validate it is actually a URL
         new URL(frontendOrigin);
       } catch (_) {
-        frontendOrigin = process.env.CLIENT_URL || 'https://hirehub-silk.vercel.app';
+        frontendOrigin = process.env.CLIENT_URL || 'https://hirehubx.vercel.app';
       }
       const token = signToken(req.user._id);
       res.redirect(`${frontendOrigin}/auth/google-success?token=${token}`);
     } catch (err) {
       console.error('Google callback error:', err);
-      res.redirect(`${process.env.CLIENT_URL || 'https://hirehub-silk.vercel.app'}/login?error=google_auth_failed`);
+      res.redirect(`${process.env.CLIENT_URL || 'https://hirehubx.vercel.app'}/login?error=google_auth_failed`);
     }
   }
 );

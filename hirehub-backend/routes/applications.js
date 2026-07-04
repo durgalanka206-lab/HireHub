@@ -121,7 +121,7 @@ router.post("/", protect, upload.single("resume"), async (req, res) => {
     if (!req.file && !req.user?.resumeFilename) {
       return res.status(400).json({ success: false, message: "Resume PDF is required. Upload one or save it in your profile." });
     }
-    if (!jobId)   return res.status(400).json({ success: false, message: "Job ID is required." });
+    if (!jobId) return res.status(400).json({ success: false, message: "Job ID is required." });
 
     const existing = await Application.findOne({ jobId, candidateEmail });
     if (existing) return res.status(400).json({ success: false, message: "You have already applied for this job." });
@@ -137,37 +137,57 @@ router.post("/", protect, upload.single("resume"), async (req, res) => {
       status:         "applied",
     });
 
-    const job = await Job.findById(jobId).lean().catch(() => null);
-
-    await sendEmail(candidateEmail, `✅ Application received — ${job?.title || "Job"} at ${job?.company || "Company"}`, `
-      <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;background:#0f0f1a;color:#fff;border-radius:14px;overflow:hidden;">
-        <div style="background:linear-gradient(135deg,#c9a84c,#a07830);padding:24px;text-align:center;">
-          <h1 style="margin:0;font-size:24px;letter-spacing:3px;color:#0a0a14;">HIREHUB</h1>
-        </div>
-        <div style="padding:32px;">
-          <h2 style="color:#c9a84c;margin:0 0 16px;">Application Received! 🎉</h2>
-          <p style="color:#ccc;line-height:1.7;">Hi <strong>${candidateName}</strong>,</p>
-          <p style="color:#ccc;line-height:1.7;">Your application for <strong style="color:#c9a84c;">${job?.title || "the position"}</strong> at <strong>${job?.company || "the company"}</strong> has been received.</p>
-          <div style="background:#1a1a2e;border-radius:10px;padding:16px;margin:20px 0;">
-            <p style="margin:0;color:#888;font-size:13px;">Match Score</p>
-            <p style="margin:4px 0 0;font-size:28px;font-weight:800;color:${Number(matchPercent)>=70?"#4ade80":Number(matchPercent)>=40?"#fbbf24":"#f87171"};">${matchPercent}%</p>
-          </div>
-          <p style="color:#555;font-size:13px;">We will notify you when your application status changes.</p>
-        </div>
-      </div>`
-    );
-
-    if (process.env.ADMIN_EMAIL) {
-      await sendEmail(process.env.ADMIN_EMAIL, `New application: ${candidateName} → ${job?.title}`, `
-        <p>New application received on HireHub.</p>
-        <p><strong>Candidate:</strong> ${candidateName} (${candidateEmail})</p>
-        <p><strong>Job:</strong> ${job?.title} at ${job?.company}</p>
-        <p><strong>Match:</strong> ${matchPercent}%</p>
-        <p><strong>Skills:</strong> ${skills}</p>`
-      );
-    }
-
+    // ── CRITICAL FIX (BUG #1): Respond immediately — do NOT await emails ─────
+    // Email sending via Gmail SMTP can take 2–8 s (longer on Render cold starts).
+    // Blocking the HTTP response before this line was causing the 60-second
+    // AbortController on the frontend to fire → "Request timed out" error.
+    // The application is already safely saved to MongoDB at this point.
     res.status(201).json({ success: true, data: application });
+
+    // ── Fire emails in background — completely non-blocking ───────────────────
+    setImmediate(async () => {
+      try {
+        const job = await Job.findById(jobId).lean().catch(() => null);
+        const matchColor = Number(matchPercent) >= 70 ? "#4ade80"
+                         : Number(matchPercent) >= 40 ? "#fbbf24"
+                         : "#f87171";
+
+        await sendEmail(
+          candidateEmail,
+          `✅ Application received — ${job?.title || "Job"} at ${job?.company || "Company"}`,
+          `<div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;background:#0f0f1a;color:#fff;border-radius:14px;overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#c9a84c,#a07830);padding:24px;text-align:center;">
+              <h1 style="margin:0;font-size:24px;letter-spacing:3px;color:#0a0a14;">HIREHUB</h1>
+            </div>
+            <div style="padding:32px;">
+              <h2 style="color:#c9a84c;margin:0 0 16px;">Application Received! 🎉</h2>
+              <p style="color:#ccc;line-height:1.7;">Hi <strong>${candidateName}</strong>,</p>
+              <p style="color:#ccc;line-height:1.7;">Your application for <strong style="color:#c9a84c;">${job?.title || "the position"}</strong> at <strong>${job?.company || "the company"}</strong> has been received.</p>
+              <div style="background:#1a1a2e;border-radius:10px;padding:16px;margin:20px 0;">
+                <p style="margin:0;color:#888;font-size:13px;">Match Score</p>
+                <p style="margin:4px 0 0;font-size:28px;font-weight:800;color:${matchColor};">${matchPercent}%</p>
+              </div>
+              <p style="color:#555;font-size:13px;">We will notify you when your application status changes.</p>
+            </div>
+          </div>`
+        );
+
+        if (process.env.ADMIN_EMAIL) {
+          await sendEmail(
+            process.env.ADMIN_EMAIL,
+            `New application: ${candidateName} → ${job?.title}`,
+            `<p>New application received on HireHub.</p>
+            <p><strong>Candidate:</strong> ${candidateName} (${candidateEmail})</p>
+            <p><strong>Job:</strong> ${job?.title} at ${job?.company}</p>
+            <p><strong>Match:</strong> ${matchPercent}%</p>
+            <p><strong>Skills:</strong> ${skills}</p>`
+          );
+        }
+      } catch (emailErr) {
+        console.error("[async email] Failed to send application email:", emailErr.message);
+      }
+    });
+
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

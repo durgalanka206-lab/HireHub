@@ -2146,8 +2146,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
             <div style={{ padding:"16px", borderBottom:"1px solid #2a2a3e", background:"#0f0f1a" }}>
               <div style={{ position:"relative", marginBottom:10 }}>
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search jobs, skills…"
-                  style={{ ...S.input, paddingLeft:36, height:38, borderRadius:8, fontSize:13 }} />
-                <span style={{ position:"absolute", left:10, top:10, color:"#555", fontSize:15 }}>🔍</span>
+                  style={{ ...S.input, height:38, borderRadius:8, fontSize:13 }} />
               </div>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                 <select value={filter} onChange={e => setFilter(e.target.value)}
