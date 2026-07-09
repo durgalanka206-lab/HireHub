@@ -302,7 +302,7 @@ router.post("/update-profile", async (req, res) => {
       "name", "phone", "city", "state", "country", "dob", "headline", "about", 
       "skills", "preferredRole", "preferredLocation", "employmentType", "expectedSalary", 
       "experienceLevel", "workPreference", "socialLinkedIn", "socialGitHub", 
-      "socialPortfolio", "socialLeetCode", "socialHackerRank"
+      "socialPortfolio", "socialLeetCode", "socialHackerRank", "avatar"
     ];
 
     updatableFields.forEach(field => {

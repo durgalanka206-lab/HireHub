@@ -36,8 +36,8 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use(
@@ -59,11 +59,13 @@ const authRoutes        = require("./routes/auth");
 const jobRoutes         = require("./routes/jobs");
 const applicationRoutes = require("./routes/applications");
 const contactRoutes     = require("./routes/contact");
+const aiRoutes          = require("./routes/ai");
 
 app.use("/api/auth",         authRoutes);
 app.use("/api/jobs",         jobRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/contact",      contactRoutes);
+app.use("/api/ai",           aiRoutes);
 
 
 app.get("/", (req, res) => {

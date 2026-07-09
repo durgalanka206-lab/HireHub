@@ -1,9 +1,19 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AuthPage from "./pages/AuthPage";
+import LandingPage from "./pages/LandingPage";
 import SuccessPage from "./pages/SuccessPage";
 import JobCard from "./components/JobCard";
+import JobMatchReportPage from "./components/JobMatchReportPage";
+import ResumeOptimizerPage from "./pages/ResumeOptimizerPage";
+import CoverLetterPage from "./pages/CoverLetterPage";
 import { S, PasswordInput, PasswordStrength, ConfirmModal } from "./components/UI";
+import InterviewPrepPage from "./components/InterviewPrepPage";
+import JobFilters from "./components/JobFilters";
+import { DEFAULT_FILTERS, filterAndSortJobs } from "./utils/filterHelpers";
+
+
+
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:5000/api" : process.env.REACT_APP_BACKEND_URL ? process.env.REACT_APP_BACKEND_URL + "/api" : "https://hirehub-dx1z.onrender.com/api");
 
@@ -254,7 +264,7 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
           ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer"
               style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", display:"block" }}
               onError={e => { e.target.style.display="none"; e.target.nextSibling && (e.target.nextSibling.style.display="flex"); }} />
-          : <div style={{ width:32, height:32, borderRadius:8,
+          : <div style={{ width:32, height:32, borderRadius:"50%",
               background:"linear-gradient(135deg,#c9a84c,#8b6914)",
               display:"flex", alignItems:"center", justifyContent:"center",
               fontSize:13, fontWeight:700, color:"#0a0a14" }}>
@@ -282,7 +292,7 @@ function AccountDropdown({ user, onLogout, onAddAccount, extraStyle }) {
                   ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer"
                       style={{ width:38, height:38, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}
                       onError={e => { e.target.onerror=null; e.target.src=""; e.target.style.display="none"; }} />
-                  : <div style={{ width:38, height:38, borderRadius:9,
+                  : <div style={{ width:38, height:38, borderRadius:"50%",
                       background:"linear-gradient(135deg,#c9a84c,#8b6914)",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       fontSize:15, fontWeight:700, color:"#0a0a14", flexShrink:0 }}>
@@ -1291,6 +1301,28 @@ function AdminDashboard({ user, token, onLogout, onAddAccount }) {
 /* ══════════════════════════════════════════════════════════════
    JOB PORTAL — with My Applications + Profile tabs
 ══════════════════════════════════════════════════════════════ */
+// Route path helpers
+const getJobIdFromPath = () => {
+  const match = window.location.pathname.match(/\/ai\/job-match\/([a-fA-F0-9]{24})/);
+  return match ? match[1] : null;
+};
+const isOptimizerPath = () => window.location.pathname.startsWith("/ai/resume-optimizer");
+const isCoverLetterPath = () => window.location.pathname.startsWith("/ai/cover-letter");
+const isProfilePath = () => window.location.pathname.startsWith("/profile");
+const isJobsPath = () => window.location.pathname.startsWith("/browse-jobs") || window.location.pathname === "/";
+const isMyAppsPath = () => window.location.pathname.startsWith("/my-applications");
+const isInterviewPath = () => window.location.pathname.startsWith("/ai/interview-prep");
+
+const getInitialTab = () => {
+  if (getJobIdFromPath()) return "report";
+  if (isOptimizerPath()) return "optimizer";
+  if (isCoverLetterPath()) return "coverletter";
+  if (isProfilePath()) return "profile";
+  if (isMyAppsPath()) return "myapps";
+  if (isInterviewPath()) return "interview";
+  return "jobs";
+};
+
 function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAuth }) {
   const [user, setUser] = useState(initialUser);
   // Skip upload if: (a) profile saved in localStorage, OR (b) Google user (has avatar)
@@ -1309,7 +1341,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     } catch { return null; }
   })();
   const [phase, setPhase] = useState(initialUser ? (savedProfile ? "portal" : "upload") : "portal");
-  const [portalTab, setPortalTab] = useState("jobs");
+  const [portalTab, setPortalTab] = useState(() => getInitialTab());
   const [resume, setResume] = useState(null);
   const [profile, setProfile] = useState(savedProfile);
   const [jobs, setJobs] = useState([]);
@@ -1317,7 +1349,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
   const [jobsError, setJobsError] = useState(false);
   const [selectedJob, setSel] = useState(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [jobFilters, setJobFilters] = useState(DEFAULT_FILTERS);
   const [coverNote, setCover] = useState("");
   const [applied, setApplied] = useState({});
   const [applying, setApp] = useState(false);
@@ -1341,7 +1373,8 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     name: user?.name||"", phone: user?.phone||"", city: user?.city||"", state: user?.state||"", country: user?.country||"", dob: user?.dob ? new Date(user.dob).toISOString().split('T')[0] : "", headline: user?.headline||"", about: user?.about||"",
     preferredRole: user?.preferredRole||"", preferredLocation: user?.preferredLocation||"", employmentType: user?.employmentType||"", expectedSalary: user?.expectedSalary||"", experienceLevel: user?.experienceLevel||"", workPreference: user?.workPreference||"",
     socialLinkedIn: user?.socialLinkedIn||"", socialGitHub: user?.socialGitHub||"", socialPortfolio: user?.socialPortfolio||"", socialLeetCode: user?.socialLeetCode||"", socialHackerRank: user?.socialHackerRank||"",
-    skills: user?.skills || []
+    skills: user?.skills || [],
+    avatar: user?.avatar || ""
   });
   const [editMsg, setEditMsg] = useState("");
   const [editLoading, setEditLoading] = useState(false);
@@ -1350,6 +1383,172 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
   const [cpConfirm, setCpConfirm] = useState("");
   const [cpMsg, setCpMsg] = useState("");
   const [cpLoading, setCpLoading] = useState(false);
+
+  // ── Profile photo modal states ─────────────────────────────────
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("view"); // "view" | "edit"
+  const [tempAvatar, setTempAvatar] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // ── AI Resume Analyzer state ───────────────────────────────────
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState("");
+
+  // ── AI Job Match Explanation state (Phase 2) ───────────────────
+  const [jobMatchMap, setJobMatchMap] = useState({});
+  const [jobMatchLoading, setJobMatchLoading] = useState(false);
+  const [jobMatchError, setJobMatchError] = useState("");
+  const [reportJobId, setReportJobId] = useState(null);
+
+  // ── AI Resume Optimizer state (Phase 3) ───────────────────────
+  const [optimizerJob, setOptimizerJob] = useState(null);
+
+  // ── AI Cover Letter state (Phase 4) ───────────────────────────
+  const [coverLetterJob, setCoverLetterJob] = useState(null);
+
+
+  // Keep local profile and editProfile states in sync with backend user updates
+  useEffect(() => {
+    if (user) {
+      setProfile(prev => {
+        const currentSkills = user.skills || [];
+        if (JSON.stringify(prev?.skills) !== JSON.stringify(currentSkills)) {
+          const updated = {
+            name: user.name || prev?.name || "",
+            skills: currentSkills,
+            summary: prev?.summary || (currentSkills.length > 0 ? `Skilled in ${currentSkills.slice(0, 4).join(", ")} and more.` : "No skills detected.")
+          };
+          try { localStorage.setItem(`hh_profile_${user.email}`, JSON.stringify(updated)); } catch {}
+          return updated;
+        }
+        return prev;
+      });
+
+      setEditProfile(prev => {
+        const isSkillsDiff = JSON.stringify(prev?.skills) !== JSON.stringify(user.skills || []);
+        const isAvatarDiff = prev?.avatar !== (user.avatar || "");
+        if (isSkillsDiff || isAvatarDiff) {
+          return {
+            ...prev,
+            name: user.name || prev.name,
+            phone: user.phone || prev.phone,
+            city: user.city || prev.city,
+            state: user.state || prev.state,
+            country: user.country || prev.country,
+            dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : prev.dob,
+            headline: user.headline || prev.headline,
+            about: user.about || prev.about,
+            skills: user.skills || [],
+            avatar: user.avatar || ""
+          };
+        }
+        return prev;
+      });
+    }
+  }, [user]);
+
+  // (Helpers declared at module level)
+
+
+  const getCoverLetterJobIdFromSearch = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("jobId");
+  };
+
+  const handleOpenOptimizer = (targetJob = null, fromSource = null) => {
+    setOptimizerJob(targetJob);
+    setPortalTab("optimizer");
+    const jobId = targetJob && (targetJob._id || targetJob.id);
+    const targetUrl = jobId
+      ? `/ai/resume-optimizer?jobId=${jobId}`
+      : "/ai/resume-optimizer";
+    const fromVal = fromSource || (portalTab === "report" ? "job-match" : "profile");
+    window.history.pushState({ from: fromVal, jobId }, "", targetUrl);
+  };
+
+  const handleOpenCoverLetter = (targetJob = null, fromSource = null) => {
+    const jobToUse = targetJob || selectedJob || jobs[0];
+    setCoverLetterJob(jobToUse);
+    setPortalTab("coverletter");
+    const jobId = jobToUse && (jobToUse._id || jobToUse.id);
+    const targetUrl = jobId
+      ? `/ai/cover-letter?jobId=${jobId}`
+      : "/ai/cover-letter";
+    const fromVal = fromSource || (portalTab === "report" ? "job-match" : "jobs");
+    window.history.pushState({ from: fromVal, jobId }, "", targetUrl);
+  };
+
+  const handleSwitchTab = (tabId) => {
+    setPortalTab(tabId);
+    if (tabId === "jobs") {
+      window.history.pushState({}, "", "/browse-jobs");
+    } else if (tabId === "myapps") {
+      window.history.pushState({}, "", "/my-applications");
+    } else if (tabId === "profile") {
+      window.history.pushState({}, "", "/profile");
+    } else if (tabId === "optimizer") {
+      window.history.pushState({}, "", "/ai/resume-optimizer");
+    } else if (tabId === "coverletter") {
+      window.history.pushState({}, "", "/ai/cover-letter");
+    } else if (tabId === "interview") {
+      window.history.pushState({}, "", "/ai/interview-prep");
+    }
+  };
+
+  // Sync route state with window.location
+  useEffect(() => {
+    // If logged in at /, redirect to /browse-jobs
+    if (window.location.pathname === "/") {
+      window.history.replaceState({}, "", "/browse-jobs");
+    }
+
+    const initialReportId = getJobIdFromPath();
+    if (initialReportId) {
+      setReportJobId(initialReportId);
+      setPortalTab("report");
+    } else if (isOptimizerPath()) {
+      setPortalTab("optimizer");
+    } else if (isCoverLetterPath()) {
+      setPortalTab("coverletter");
+    } else if (isProfilePath()) {
+      setPortalTab("profile");
+    } else if (isMyAppsPath()) {
+      setPortalTab("myapps");
+    } else if (isInterviewPath()) {
+      setPortalTab("interview");
+    } else if (isJobsPath()) {
+      setPortalTab("jobs");
+    }
+
+    const handlePopState = () => {
+      const matchId = getJobIdFromPath();
+      if (matchId) {
+        setReportJobId(matchId);
+        setPortalTab("report");
+      } else if (isOptimizerPath()) {
+        setPortalTab("optimizer");
+      } else if (isCoverLetterPath()) {
+        setPortalTab("coverletter");
+      } else if (isProfilePath()) {
+        setPortalTab("profile");
+      } else if (isMyAppsPath()) {
+        setPortalTab("myapps");
+      } else if (isInterviewPath()) {
+        setPortalTab("interview");
+      } else if (isJobsPath()) {
+        setPortalTab("jobs");
+      } else {
+        setPortalTab("jobs");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const fileRef = useRef();
   const authHeader = { Authorization:`Bearer ${token}` };
@@ -1362,6 +1561,14 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       .then(d => {
         if (d.success && d.data.length > 0) {
           setJobs(d.data); setSel(d.data[0]); setJobsError(false);
+          const searchJobId = getCoverLetterJobIdFromSearch();
+          if (searchJobId) {
+            const foundJob = d.data.find(j => (j._id || j.id) === searchJobId);
+            if (foundJob) {
+              setCoverLetterJob(foundJob);
+              setOptimizerJob(foundJob);
+            }
+          }
         } else { setJobsError(true); }
       })
       .catch(() => setJobsError(true))
@@ -1416,6 +1623,22 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     return job.tags?.length ? Math.round((matched.length/job.tags.length)*100) : 0;
   }, [profile]);
 
+  const filtered = useMemo(() => {
+    return filterAndSortJobs(jobs, jobFilters, calcMatch, showBookmarksOnly, bookmarks, search);
+  }, [jobs, jobFilters, calcMatch, showBookmarksOnly, bookmarks, search]);
+
+  useEffect(() => {
+    if (!filtered || filtered.length === 0) {
+      setSel(null);
+      return;
+    }
+    const currentId = selectedJob?._id || selectedJob?.id;
+    const found = filtered.find(j => (j._id || j.id) === currentId);
+    if (!found) {
+      setSel(filtered[0]);
+    }
+  }, [filtered, selectedJob]);
+
   const extractSkills = (text) => {
     const lower = text.toLowerCase();
     const found = SKILL_KEYWORDS.filter(k => lower.includes(k));
@@ -1447,6 +1670,35 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     document.head.appendChild(script);
   });
 
+  const handleUploadResume = async (file, text) => {
+    const parsed = extractSkills(text);
+    const newSkills = Array.from(new Set([...(user?.skills || []), ...(parsed.skills || [])]));
+    const fd = new FormData();
+    fd.append("resume", file);
+    fd.append("skills", JSON.stringify(newSkills));
+    
+    const res = await fetch(`${API}/auth/upload-resume`, {
+      method: "POST",
+      headers: authHeader,
+      body: fd
+    });
+    const d = await res.json();
+    if (d.success) {
+      setUser(d.user);
+      localStorage.setItem("hh_user", JSON.stringify(d.user));
+      setJobMatchMap({}); // clear match cache to trigger fresh AI recalculation
+      
+      // If we are currently looking at an AI match report, recalculate it
+      if (portalTab === "report" && reportJobId) {
+        handleAnalyzeJobMatch(reportJobId);
+      }
+      
+      return d.user;
+    } else {
+      throw new Error(d.message || "Failed to upload resume");
+    }
+  };
+
   const handleFile = async (file) => {
     if (!file) return;
     const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
@@ -1465,7 +1717,6 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
           text += content.items.map(it=>it.str).join(" ") + "\n";
         }
       } else {
-        // DOCX — use mammoth from CDN
         const mammoth = await loadMammoth();
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
@@ -1473,14 +1724,25 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       }
       setStep(2);
       const parsed = extractSkills(text);
-      setProfile(parsed);
-      try { localStorage.setItem(`hh_profile_${user?.email || "guest"}`, JSON.stringify(parsed)); } catch {}
+      
+      if (user && token) {
+        await handleUploadResume(file, text);
+      } else {
+        setProfile(parsed);
+        try { localStorage.setItem(`hh_profile_${user?.email || "guest"}`, JSON.stringify(parsed)); } catch {}
+      }
       setStep(3);
       setTimeout(() => setPhase("portal"), 800);
     } catch (err) {
       const fallback = extractSkills("");
-      setProfile(fallback);
-      try { localStorage.setItem(`hh_profile_${user?.email || "guest"}`, JSON.stringify(fallback)); } catch {}
+      if (user && token) {
+        try {
+          await handleUploadResume(file, "");
+        } catch {}
+      } else {
+        setProfile(fallback);
+        try { localStorage.setItem(`hh_profile_${user?.email || "guest"}`, JSON.stringify(fallback)); } catch {}
+      }
       setStep(3);
       setTimeout(() => setPhase("portal"), 800);
     }
@@ -1512,28 +1774,180 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
         text = result.value;
       }
       
-      const parsed = extractSkills(text);
-      const newSkills = Array.from(new Set([...editProfile.skills, ...(parsed.skills||[])]));
-      
       setEditMsg("Uploading resume...");
-      const fd = new FormData();
-      fd.append("resume", file);
-      fd.append("skills", JSON.stringify(newSkills));
-      
-      const res = await fetch(`${API}/auth/upload-resume`, { method: "POST", headers: authHeader, body: fd });
-      const d = await res.json();
-      if (d.success) {
-        setUser(d.user);
-        localStorage.setItem("hh_user", JSON.stringify(d.user));
-        setEditProfile(prev => ({...prev, skills: newSkills}));
-        setEditMsg("✓ Resume uploaded & skills extracted");
-      } else { setEditMsg(d.message || "Failed to upload resume"); }
+      await handleUploadResume(file, text);
+      setEditMsg("✓ Resume uploaded & skills extracted");
     } catch (err) {
       setEditMsg("Failed to process resume");
     } finally {
       setTimeout(() => setEditMsg(""), 3000);
       setEditLoading(false);
     }
+  };
+
+  const handleOpenPhotoModal = () => {
+    setTempAvatar(user?.avatar || "");
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+    setModalMode("view");
+    setIsPhotoModalOpen(true);
+  };
+
+  const handleUploadPhoto = async (base64Data) => {
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/update-profile`, {
+        method: "POST",
+        headers: { ...authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: base64Data })
+      });
+      const text = await res.text();
+      let d;
+      try {
+        d = JSON.parse(text);
+      } catch (e) {
+        throw new Error("Invalid response format. Status: " + res.status);
+      }
+      if (d.success) {
+        setUser(d.user);
+        localStorage.setItem("hh_user", JSON.stringify(d.user));
+        setEditProfile(prev => ({ ...prev, avatar: d.user.avatar || "" }));
+        setEditMsg("✓ Profile photo updated successfully.");
+      } else {
+        alert(d.message || "Failed to update profile photo.");
+      }
+    } catch (err) {
+      alert("Failed to save profile photo: " + err.message);
+    } finally {
+      setEditLoading(false);
+      setTimeout(() => setEditMsg(""), 3000);
+    }
+  };
+
+  const handleDeletePhotoDirect = async () => {
+    if (!window.confirm("Are you sure you want to delete your profile photo?")) return;
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/update-profile`, {
+        method: "POST",
+        headers: { ...authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: "" })
+      });
+      const d = await res.json();
+      if (d.success) {
+        setUser(d.user);
+        localStorage.setItem("hh_user", JSON.stringify(d.user));
+        setEditProfile(prev => ({ ...prev, avatar: "" }));
+        setEditMsg("✓ Profile photo deleted.");
+        setIsPhotoModalOpen(false);
+      } else {
+        alert(d.message || "Failed to delete profile photo.");
+      }
+    } catch (err) {
+      alert("Failed to connect to backend. Please try again.");
+    } finally {
+      setEditLoading(false);
+      setTimeout(() => setEditMsg(""), 3000);
+    }
+  };
+
+  const handleModalPhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const acceptedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    const isValidExtension = ["jpg", "jpeg", "png", "webp"].includes(fileExtension);
+    const isValidType = acceptedTypes.includes(file.type);
+
+    if (!isValidType && !isValidExtension) {
+      alert("Only JPG, JPEG, PNG, or WEBP images are accepted.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setTempAvatar(reader.result);
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      setModalMode("edit");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveCroppedPhoto = () => {
+    if (!tempAvatar) return;
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext("2d");
+
+      ctx.clearRect(0, 0, 400, 400);
+
+      const cw = canvas.width;
+      const ch = canvas.height;
+
+      const aspect = img.width / img.height;
+      let renderWidth = cw;
+      let renderHeight = ch;
+      if (aspect > 1) {
+        renderWidth = ch * aspect;
+      } else {
+        renderHeight = cw / aspect;
+      }
+
+      ctx.save();
+      ctx.translate(cw / 2, ch / 2);
+
+      const scaleMultiplier = 400 / 260;
+      ctx.translate(offset.x * scaleMultiplier, offset.y * scaleMultiplier);
+      ctx.scale(zoom, zoom);
+
+      ctx.drawImage(img, -renderWidth / 2, -renderHeight / 2, renderWidth, renderHeight);
+      ctx.restore();
+
+      const croppedBase64 = canvas.toDataURL("image/png");
+      await handleUploadPhoto(croppedBase64);
+      setIsPhotoModalOpen(false);
+      setModalMode("view");
+    };
+    img.src = tempAvatar;
+  };
+
+  const handleDragStart = (e) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+  };
+
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    setDragStart({ x: e.touches[0].clientX - offset.x, y: e.touches[0].clientY - offset.y });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setOffset({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
+  };
+
+  const handleWheelZoom = (e) => {
+    e.preventDefault();
+    let newZoom = zoom - e.deltaY * 0.002;
+    newZoom = Math.min(3, Math.max(1, newZoom));
+    setZoom(newZoom);
   };
 
   const handleDeleteResume = async () => {
@@ -1545,6 +1959,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       if (d.success) {
         setUser(d.user);
         localStorage.setItem("hh_user", JSON.stringify(d.user));
+        setJobMatchMap({}); // clear match cache to trigger fresh AI recalculation
         setEditMsg("✓ Resume deleted");
       } else { setEditMsg(d.message || "Failed to delete resume"); }
     } catch (err) {
@@ -1554,6 +1969,72 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
       setEditLoading(false);
     }
   };
+
+  // ── AI Resume Analyzer ─────────────────────────────────────────
+  const handleAnalyzeResume = async () => {
+    setAiAnalyzing(true);
+    setAiError("");
+    setAiAnalysis(null);
+    try {
+      const res = await fetch(`${API}/ai/analyze-resume`, {
+        method: "POST",
+        headers: authHeader,
+      });
+      const d = await res.json();
+      if (d.success) {
+        setAiAnalysis(d.data);
+      } else {
+        setAiError(d.message || "AI analysis failed. Please try again.");
+      }
+    } catch (err) {
+      setAiError("Could not connect to the AI service. Please check your connection.");
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
+
+  // ── AI Job Match Analyzer (Phase 2) ───────────────────────────
+  const analyzingJobRef = useRef(null);
+
+  const handleAnalyzeJobMatch = async (jobId) => {
+    if (!user || !token) { onShowAuth("login"); return; }
+    if (!user?.resumeFilename) { alert("Please upload a resume in your profile first."); return; }
+    if (!jobId) return;
+    if (jobMatchLoading || analyzingJobRef.current === jobId) return;
+
+    analyzingJobRef.current = jobId;
+    setJobMatchLoading(true);
+    setJobMatchError("");
+    setReportJobId(jobId);
+    setPortalTab("report");
+    window.history.pushState({}, "", `/ai/job-match/${jobId}`);
+
+    try {
+      const res = await fetch(`${API}/ai/job-match`, {
+        method: "POST",
+        headers: { ...authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setJobMatchMap(prev => ({ ...prev, [jobId]: d.data }));
+      } else {
+        setJobMatchError(d.message || "Failed to analyze job match.");
+      }
+    } catch (err) {
+      setJobMatchError("Could not connect to AI service. Please check your connection.");
+    } finally {
+      setJobMatchLoading(false);
+      analyzingJobRef.current = null;
+    }
+  };
+
+  // Auto-trigger analysis if user lands directly on /ai/job-match/:jobId and report is not cached
+  useEffect(() => {
+    if (portalTab === "report" && reportJobId && !jobMatchMap[reportJobId] && !jobMatchLoading && !jobMatchError && user?.resumeFilename && token && analyzingJobRef.current !== reportJobId) {
+      handleAnalyzeJobMatch(reportJobId);
+    }
+  }, [portalTab, reportJobId, jobMatchMap, jobMatchLoading, jobMatchError, user?.resumeFilename, token]);
 
   const jobKey = (j) => j?._id || j?.id;
 
@@ -1757,7 +2238,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     </div>
   );
 
-  if (!selectedJob && !jobsError) return (
+  if (jobsLoading && !jobsError) return (
     <div style={{ ...S.app, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <p style={{ color:"#555" }}>Loading jobs…</p>
     </div>
@@ -1765,16 +2246,6 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
   // ── Filtered jobs for jobs tab ──────────────────────────────
   const matchPct = calcMatch(selectedJob);
-  const filtered = jobs
-    .filter(j => filter==="All" || j.type===filter || (filter==="Remote" && j.location==="Remote"))
-    .filter(j => !showBookmarksOnly || bookmarks.includes(j._id||j.id))
-    .filter(j => !search ||
-      j.title.toLowerCase().includes(search.toLowerCase()) ||
-      j.company.toLowerCase().includes(search.toLowerCase()) ||
-      (j.tags||[]).some(t => t.toLowerCase().includes(search.toLowerCase()))
-    )
-    .map(j => ({...j, match:calcMatch(j)}))
-    .sort((a,b) => b.match-a.match);
 
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#0a0a14", color:"#e8e0d0", height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -1795,10 +2266,13 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
             { id:"jobs",    label:"Browse Jobs" },
             ...(user ? [
               { id:"myapps", label:"My Applications" },
+              { id:"optimizer", label:"✨ Resume Optimizer" },
+              { id:"coverletter", label:"✉️ Cover Letter" },
+              { id:"interview", label:"🤖 AI Interview" },
               { id:"profile", label:"Profile" }
             ] : [])
           ].map(t => (
-            <button key={t.id} onClick={() => setPortalTab(t.id)}
+            <button key={t.id} onClick={() => handleSwitchTab(t.id)}
               style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"inherit", transition:"all .2s",
                 background: portalTab===t.id ? "rgba(201,168,76,0.15)" : "transparent",
                 color: portalTab===t.id ? "#c9a84c" : "#555",
@@ -1961,11 +2435,86 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
             {/* Header / Basic Info */}
             <div style={{ ...S.card, padding:"32px", display:"flex", gap:24, alignItems:"center", flexWrap: "wrap" }}>
-              {user?.avatar ? <img src={user?.avatar} alt={user?.name||""} referrerPolicy="no-referrer" style={{ width:100, height:100, borderRadius:20, objectFit:"cover" }} />
-                : <div style={{ width:100, height:100, borderRadius:20, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:40, fontWeight:700, color:"#0a0a14" }}>{user?.name?.[0]?.toUpperCase()}</div>}
+              {/* Avatar section container */}
+              <div style={{ position: "relative", width: 100, height: 100, flexShrink: 0 }}>
+                {/* Avatar upload container */}
+                <div 
+                  onClick={handleOpenPhotoModal}
+                  style={{ 
+                    width: "100%", 
+                    height: "100%", 
+                    borderRadius: "50%", 
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    border: "2px solid #2a2a3e",
+                    boxSizing: "border-box"
+                  }}
+                  title="Click to manage profile picture"
+                >
+                  {user?.avatar ? (
+                    <img 
+                      src={user.avatar} 
+                      alt={user?.name||""} 
+                      style={{ 
+                        width: "100%", 
+                        height: "100%", 
+                        objectFit: "cover"
+                      }} 
+                    />
+                  ) : (
+                    <div style={{ 
+                      width: "100%", 
+                      height: "100%", 
+                      background: "linear-gradient(135deg,#c9a84c,#8b6914)", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      fontSize: 40, 
+                      fontWeight: 700, 
+                      color: "#0a0a14" 
+                    }}>
+                      {user?.name?.[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                {/* Small floating minimalist pencil icon button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenPhotoModal();
+                  }}
+                  style={{
+                    position: "absolute",
+                    bottom: 2,
+                    right: 2,
+                    background: "none",
+                    border: "none",
+                    color: "#8a8a9a",
+                    cursor: "pointer",
+                    fontSize: 18,
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "color 0.15s ease, transform 0.15s ease",
+                    outline: "none"
+                  }}
+                  title="Edit profile photo"
+                  onMouseOver={e => {
+                    e.currentTarget.style.color = "#c9a84c";
+                    e.currentTarget.style.transform = "scale(1.15)";
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.color = "#8a8a9a";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                >
+                  ✏️
+                </button>
+              </div>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <h3 style={{ margin:"0 0 8px", fontSize:26, fontWeight:700, color:"#e8e0d0" }}>{user?.name||""}</h3>
-                <p style={{ margin:"0 0 12px", fontSize:15, color:"#a8a8b8" }}>{user?.headline || "Add a professional headline"}</p>
+                <p style={{ margin:"0 0 12px", fontSize:15, color:"#a8a8b8" }}>{user?.headline || ""}</p>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 13, color: "#888" }}>
                   <span>📧 {user?.email}</span>
                   {user?.phone && <span>📱 {user?.phone}</span>}
@@ -2004,7 +2553,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div><label style={S.label}>Full Name</label><input style={S.input} value={editProfile.name} onChange={e => handleProfileChange("name", e.target.value)} /></div>
                 <div><label style={S.label}>Phone Number</label><input style={S.input} value={editProfile.phone} onChange={e => handleProfileChange("phone", e.target.value)} /></div>
-                <div><label style={S.label}>Headline</label><input style={S.input} value={editProfile.headline} onChange={e => handleProfileChange("headline", e.target.value)} placeholder="e.g. Senior Software Engineer" /></div>
+                <div><label style={S.label}>Headline</label><input style={S.input} value={editProfile.headline} onChange={e => handleProfileChange("headline", e.target.value)} placeholder="Add a professional headline" /></div>
                 <div><label style={S.label}>Date of Birth</label><input type="date" style={{...S.input, colorScheme: "dark"}} value={editProfile.dob} onChange={e => handleProfileChange("dob", e.target.value)} /></div>
                 <div><label style={S.label}>City</label><input style={S.input} value={editProfile.city} onChange={e => handleProfileChange("city", e.target.value)} /></div>
                 <div><label style={S.label}>Country</label><input style={S.input} value={editProfile.country} onChange={e => handleProfileChange("country", e.target.value)} /></div>
@@ -2038,6 +2587,402 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                   <input type="file" id="profileResumeInput" hidden accept=".pdf,.docx" onChange={handleProfileResume} />
                 </div>
               )}
+            </div>
+
+            {/* ── AI Resume Analysis Section ─────────────────────────── */}
+
+            <div style={{ ...S.card, padding: "28px", background: "linear-gradient(135deg, #0d0d1f 0%, #111128 50%, #0a0a18 100%)", border: "1px solid rgba(201,168,76,0.2)", position: "relative", overflow: "hidden" }}>
+
+              {/* Decorative glow */}
+
+              <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, background: "radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+
+
+              {/* Header */}
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg,#c9a84c,#8b6914)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🤖</div>
+
+                  <div>
+
+                    <h3 style={{ margin: 0, fontSize: 18, color: "#e8e0d0", fontFamily: "'Cormorant Garamond',serif" }}>AI Resume Analysis</h3>
+
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#555" }}>Powered by Gemini AI</p>
+
+                  </div>
+
+                </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+
+                  <button
+
+                    id="ai-analyze-resume-btn"
+
+                    onClick={handleAnalyzeResume}
+
+                    disabled={aiAnalyzing || !user?.resumeFilename}
+
+                    title={!user?.resumeFilename ? "Upload a resume first" : "Analyze your resume with AI"}
+
+                    style={{
+
+                      ...S.btn,
+
+                      padding: "10px 20px",
+
+                      fontSize: 13,
+
+                      opacity: (aiAnalyzing || !user?.resumeFilename) ? 0.6 : 1,
+
+                      cursor: (aiAnalyzing || !user?.resumeFilename) ? "not-allowed" : "pointer",
+
+                      gap: 8,
+
+                    }}
+
+                  >
+
+                    {aiAnalyzing ? (
+
+                      <>
+
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 1s linear infinite", flexShrink: 0 }}>
+
+                          <path d="M21 12a9 9 0 11-6.219-8.56"/>
+
+                        </svg>
+
+                        Analyzing…
+
+                      </>
+
+                    ) : "✨ Analyze Resume"}
+
+                  </button>
+
+
+
+                  <button
+
+                    id="ai-optimize-resume-btn"
+
+                    onClick={() => handleOpenOptimizer(null, "profile")}
+
+                    disabled={!user?.resumeFilename}
+
+                    title={!user?.resumeFilename ? "Upload a resume first" : "Generate AI-Optimized Resume"}
+
+                    style={{
+
+                      ...S.btn,
+
+                      padding: "10px 20px",
+
+                      fontSize: 13,
+
+                      background: "linear-gradient(135deg, #10b981, #059669)",
+
+                      color: "#fff",
+
+                      border: "none",
+
+                      opacity: !user?.resumeFilename ? 0.6 : 1,
+
+                      cursor: !user?.resumeFilename ? "not-allowed" : "pointer",
+
+                      gap: 8,
+
+                    }}
+
+                  >
+
+                    🚀 Optimize Resume
+
+                  </button>
+
+                </div>
+
+              </div>
+
+
+
+              {/* Info when no resume */}
+
+              {!user?.resumeFilename && (
+
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "16px 20px", border: "1px dashed #2a2a3e", textAlign: "center" }}>
+
+                  <p style={{ margin: 0, color: "#555", fontSize: 13 }}>📄 Upload a resume above to unlock AI-powered analysis.</p>
+
+                </div>
+
+              )}
+
+
+
+              {/* Loading spinner */}
+
+              {aiAnalyzing && (
+
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "32px 0" }}>
+
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", border: "3px solid #2a2a3e", borderTopColor: "#c9a84c", animation: "spin 0.9s linear infinite" }} />
+
+                  <p style={{ margin: 0, color: "#888", fontSize: 14 }}>Analyzing your resume with AI…</p>
+
+                  <p style={{ margin: 0, color: "#444", fontSize: 12 }}>This may take 10–20 seconds</p>
+
+                </div>
+
+              )}
+
+
+
+              {/* Error state */}
+
+              {aiError && !aiAnalyzing && (
+
+                <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+
+                  <p style={{ margin: 0, color: "#f87171", fontSize: 13, lineHeight: 1.5 }}>{aiError}</p>
+
+                </div>
+
+              )}
+
+
+
+              {/* Results */}
+
+              {aiAnalysis && !aiAnalyzing && (() => {
+
+                const score = aiAnalysis.atsScore || 0;
+
+                const scoreColor = score >= 75 ? "#4ade80" : score >= 50 ? "#c9a84c" : "#f87171";
+
+                const circumference = 2 * Math.PI * 36;
+
+                const dashOffset = circumference - (score / 100) * circumference;
+
+                return (
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+
+
+                    {/* ATS Score + Summary row */}
+
+                    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 24, alignItems: "start", flexWrap: "wrap" }}>
+
+                      {/* Circular Score */}
+
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 100 }}>
+
+                        <svg width="100" height="100" viewBox="0 0 100 100">
+
+                          <circle cx="50" cy="50" r="36" fill="none" stroke="#1e1e30" strokeWidth="10"/>
+
+                          <circle cx="50" cy="50" r="36" fill="none" stroke={scoreColor} strokeWidth="10"
+
+                            strokeDasharray={circumference} strokeDashoffset={dashOffset}
+
+                            strokeLinecap="round"
+
+                            style={{ transform: "rotate(-90deg)", transformOrigin: "50px 50px", transition: "stroke-dashoffset 1s ease" }}/>
+
+                          <text x="50" y="44" textAnchor="middle" fontSize="20" fontWeight="800" fill={scoreColor}>{score}</text>
+
+                          <text x="50" y="58" textAnchor="middle" fontSize="9" fill="#555">/100</text>
+
+                        </svg>
+
+                        <p style={{ margin: 0, fontSize: 11, color: "#888", textAlign: "center", fontWeight: 600 }}>ATS Score</p>
+
+                        <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor, background: `${scoreColor}18`, padding: "2px 10px", borderRadius: 20 }}>
+
+                          {score >= 75 ? "Excellent" : score >= 50 ? "Good" : "Needs Work"}
+
+                        </span>
+
+                      </div>
+
+
+
+                      {/* Summary */}
+
+                      <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: "18px 20px", border: "1px solid #1e1e30" }}>
+
+                        <p style={{ margin: "0 0 8px", fontSize: 11, color: "#c9a84c", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Resume Summary</p>
+
+                        <p style={{ margin: 0, color: "#d4cfc8", fontSize: 14, lineHeight: 1.7 }}>{aiAnalysis.summary}</p>
+
+                      </div>
+
+                    </div>
+
+
+
+                    {/* Skills Found + Missing Skills */}
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+
+                      {/* Skills Found */}
+
+                      <div style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.15)", borderRadius: 12, padding: "18px 20px" }}>
+
+                        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#4ade80", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>✓ Skills Found ({aiAnalysis.skillsFound?.length || 0})</p>
+
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+
+                          {(aiAnalysis.skillsFound || []).map((sk, i) => (
+
+                            <span key={i} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", color: "#4ade80", borderRadius: 20, padding: "4px 10px", fontSize: 12, fontWeight: 600 }}>{sk}</span>
+
+                          ))}
+
+                          {(!aiAnalysis.skillsFound?.length) && <span style={{ color: "#555", fontSize: 12 }}>None detected</span>}
+
+                        </div>
+
+                      </div>
+
+
+
+                      {/* Missing Skills */}
+
+                      <div style={{ background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.15)", borderRadius: 12, padding: "18px 20px" }}>
+
+                        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#f87171", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>✗ Missing Skills ({aiAnalysis.missingSkills?.length || 0})</p>
+
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+
+                          {(aiAnalysis.missingSkills || []).map((sk, i) => (
+
+                            <span key={i} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#f87171", borderRadius: 20, padding: "4px 10px", fontSize: 12, fontWeight: 600 }}>{sk}</span>
+
+                          ))}
+
+                          {(!aiAnalysis.missingSkills?.length) && <span style={{ color: "#555", fontSize: 12 }}>All good!</span>}
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+
+
+                    {/* Strengths + Weaknesses */}
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+
+                      {/* Strengths */}
+
+                      <div style={{ background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 12, padding: "18px 20px" }}>
+
+                        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#60a5fa", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>💪 Strengths</p>
+
+                        <ul style={{ margin: 0, padding: "0 0 0 18px", display: "flex", flexDirection: "column", gap: 6 }}>
+
+                          {(aiAnalysis.strengths || []).map((s, i) => (
+
+                            <li key={i} style={{ color: "#d4cfc8", fontSize: 13, lineHeight: 1.5 }}>{s}</li>
+
+                          ))}
+
+                          {(!aiAnalysis.strengths?.length) && <li style={{ color: "#555", fontSize: 12, listStyle: "none", padding: 0 }}>No data</li>}
+
+                        </ul>
+
+                      </div>
+
+
+
+                      {/* Weaknesses */}
+
+                      <div style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.15)", borderRadius: 12, padding: "18px 20px" }}>
+
+                        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#fb923c", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>⚡ Weaknesses</p>
+
+                        <ul style={{ margin: 0, padding: "0 0 0 18px", display: "flex", flexDirection: "column", gap: 6 }}>
+
+                          {(aiAnalysis.weaknesses || []).map((w, i) => (
+
+                            <li key={i} style={{ color: "#d4cfc8", fontSize: 13, lineHeight: 1.5 }}>{w}</li>
+
+                          ))}
+
+                          {(!aiAnalysis.weaknesses?.length) && <li style={{ color: "#555", fontSize: 12, listStyle: "none", padding: 0 }}>No data</li>}
+
+                        </ul>
+
+                      </div>
+
+                    </div>
+
+
+
+                    {/* Recommendations */}
+
+                    <div style={{ background: "rgba(201,168,76,0.05)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 12, padding: "20px 22px" }}>
+
+                      <p style={{ margin: "0 0 14px", fontSize: 11, color: "#c9a84c", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>🎯 Recommendations</p>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+                        {(aiAnalysis.recommendations || []).map((rec, i) => (
+
+                          <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+
+                            <span style={{ minWidth: 22, height: 22, borderRadius: "50%", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#c9a84c", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+
+                            <p style={{ margin: 0, color: "#d4cfc8", fontSize: 13, lineHeight: 1.6 }}>{rec}</p>
+
+                          </div>
+
+                        ))}
+
+                        {(!aiAnalysis.recommendations?.length) && <p style={{ margin: 0, color: "#555", fontSize: 12 }}>No recommendations</p>}
+
+                      </div>
+
+                    </div>
+
+
+
+                    {/* Re-analyze button */}
+
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+
+                      <button onClick={handleAnalyzeResume} disabled={aiAnalyzing}
+
+                        style={{ ...S.btn, background: "transparent", border: "1px solid rgba(201,168,76,0.4)", color: "#c9a84c", padding: "8px 18px", fontSize: 12, opacity: aiAnalyzing ? 0.6 : 1 }}>
+
+                        🔄 Re-analyze
+
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                );
+
+              })()}
+
+
+
+              {/* CSS animation for spinner */}
+
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
             </div>
 
             {/* Career Preferences & Social */}
@@ -2100,7 +3045,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
             {/* Account Settings */}
             <div style={{ ...S.card, padding:"24px", marginTop: 10 }}>
               <h3 style={{ margin:"0 0 16px", fontSize:18, color:"#e8e0d0", fontFamily:"'Cormorant Garamond',serif" }}>Account Settings</h3>
-              {!user?.avatar ? (
+              {!user?.avatar || user.avatar.startsWith('data:image/') ? (
                 <div style={{ display:"flex", flexDirection:"column", gap:12, maxWidth: 400 }}>
                   <p style={{ margin: "0 0 8px", fontSize: 14, color: "#888" }}>Change Password</p>
                   <div><label style={S.label}>Current Password</label><PasswordInput value={cpCurrent} onChange={e => setCpCurrent(e.target.value)} /></div>
@@ -2148,13 +3093,12 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search jobs, skills…"
                   style={{ ...S.input, height:38, borderRadius:8, fontSize:13 }} />
               </div>
-              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                <select value={filter} onChange={e => setFilter(e.target.value)}
-                  style={{ flex:1, background:"#1a1a2a", border:"1px solid #2a2a3e", borderRadius:8, padding:"6px 10px", color: filter!=="All" ? "#c9a84c" : "#888", fontSize:12, fontWeight:600, cursor:"pointer", outline:"none", fontFamily:"inherit" }}>
-                  {["All","Full-time","Part-time","Contract","Internship","Remote"].map(f => (
-                    <option key={f} value={f} style={{ background:"#1a1a2a", color:"#e8e0d0" }}>{f}</option>
-                  ))}
-                </select>
+              <div style={{ display:"flex", gap:8, alignItems:"center", position:"relative" }}>
+                <JobFilters
+                  filters={jobFilters}
+                  onApplyFilters={setJobFilters}
+                  onResetFilters={() => setJobFilters(DEFAULT_FILTERS)}
+                />
                 <button onClick={() => setShowBookmarksOnly(b=>!b)}
                   style={{ padding:"6px 12px", borderRadius:8, border: showBookmarksOnly ? "1px solid rgba(251,191,36,0.4)" : "1px solid #2a2a3e", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit", whiteSpace:"nowrap",
                     background: showBookmarksOnly ? "rgba(251,191,36,0.12)" : "#1a1a2a",
@@ -2252,6 +3196,69 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                   </div>
                 </div>
               )}
+
+              {/* ── Action Buttons in Job Details ──────────────── */}
+              <div style={{
+                marginBottom: 24,
+                display: "flex",
+                justifyContent: "flex-end",
+                width: "100%",
+                gap: 12,
+                flexWrap: "wrap"
+              }}>
+                <button
+                  id="ai-job-match-btn"
+                  onClick={() => {
+                    if (jobMatchMap[selectedJob?._id]) {
+                      setReportJobId(selectedJob._id);
+                      setPortalTab("report");
+                      window.history.pushState({}, "", `/ai/job-match/${selectedJob._id}`);
+                    } else {
+                      handleAnalyzeJobMatch(selectedJob?._id);
+                    }
+                  }}
+                  disabled={jobMatchLoading || !user?.resumeFilename}
+                  style={{
+                    ...S.btn,
+                    padding: "10px 22px",
+                    fontSize: 13,
+                    opacity: (jobMatchLoading || !user?.resumeFilename) ? 0.6 : 1,
+                    cursor: (jobMatchLoading || !user?.resumeFilename) ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    height: "40px",
+                    borderRadius: "8px"
+                  }}
+                >
+                  {jobMatchLoading ? "Analyzing Match…" : jobMatchMap[selectedJob?._id] ? "📊 View AI Report" : "✨ Analyze Job Match"}
+                </button>
+
+                <button
+                  id="ai-prepare-interview-btn"
+                  onClick={() => {
+                    localStorage.setItem("hh_interview_target_job_id", selectedJob._id);
+                    setPortalTab("interview");
+                    window.history.pushState({}, "", `/ai/interview-prep/${selectedJob._id}`);
+                  }}
+                  style={{
+                    ...S.btn,
+                    padding: "10px 22px",
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    height: "40px",
+                    borderRadius: "8px",
+                    boxShadow: "0 2px 8px rgba(201,168,76,0.2)"
+                  }}
+                >
+                  🧠 Prepare for Interview
+                </button>
+              </div>
+
               {applyError && <div style={{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.2)", borderRadius:8, padding:"12px 16px", fontSize:13, color:"#ef4444", marginBottom:16 }}>{applyError}</div>}
             </>)}
           </div>
@@ -2264,8 +3271,8 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                 <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                   {user ? (
                     <>
-                      {user?.avatar ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:10, objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
-                        : <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:"#0a0a14" }}>{user?.name?.[0]?.toUpperCase()}</div>}
+                      {user?.avatar ? <img src={user?.avatar} alt={(user?.name || "")} referrerPolicy="no-referrer" style={{ width:40, height:40, borderRadius:"50%", objectFit:"cover" }} onError={e => { e.target.onerror=null; e.target.style.display="none"; }} />
+                        : <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,#c9a84c,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:"#0a0a14" }}>{user?.name?.[0]?.toUpperCase()}</div>}
                       <div>
                         <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#e8e0d0" }}>{profile?.name||(user?.name || "")}</p>
                         <p style={{ margin:0, fontSize:11, color:"#666" }}>{(user?.email || "")}</p>
@@ -2401,6 +3408,422 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
           </div>
         </div>
       )}
+
+      {/* ── AI JOB MATCH REPORT PAGE (Phase 2 Dedicated Report) ─────── */}
+      {portalTab==="report" && (() => {
+        const reportJob = jobs.find(j => (j._id || j.id) === reportJobId) || selectedJob;
+        const isJobApplied = reportJob ? !!applied[jobKey(reportJob)] : false;
+
+        return (
+          <JobMatchReportPage
+            job={reportJob}
+            user={user}
+            matchData={jobMatchMap[reportJobId]}
+            loading={jobMatchLoading}
+            error={jobMatchError}
+            isApplied={isJobApplied}
+            onBack={() => {
+              setPortalTab("jobs");
+              window.history.pushState({}, "", "/browse-jobs");
+            }}
+            onApply={(targetJob) => {
+              const j = targetJob || reportJob || selectedJob;
+              if (j) setSel(j);
+              setPortalTab("jobs");
+              window.history.pushState({}, "", "/browse-jobs");
+              setTimeout(() => doApply(), 200);
+            }}
+            onGoToMyApps={() => {
+              setPortalTab("myapps");
+              window.history.pushState({}, "", "/my-applications");
+            }}
+            onAnalyzeAgain={() => {
+              if (reportJobId) handleAnalyzeJobMatch(reportJobId);
+            }}
+            onOptimizeResume={(targetJob) => handleOpenOptimizer(targetJob, "job-match")}
+            onGenerateCoverLetter={(targetJob) => handleOpenCoverLetter(targetJob, "job-match")}
+            convertToLPA={convertToLPA}
+          />
+        );
+      })()}
+
+      {/* ── AI RESUME OPTIMIZER PAGE (Phase 3 Dedicated Page) ─────────── */}
+      {portalTab==="optimizer" && (
+        <ResumeOptimizerPage
+          user={user}
+          token={token}
+          targetJob={optimizerJob}
+          onBack={(fromSource, jobId) => {
+            if (fromSource === "job-match" && jobId) {
+              setReportJobId(jobId);
+              setPortalTab("report");
+              window.history.pushState({}, "", `/ai/job-match/${jobId}`);
+            } else {
+              setPortalTab("profile");
+              window.history.pushState({}, "", "/profile");
+            }
+          }}
+          API_URL={API}
+        />
+      )}
+
+      {/* ── AI COVER LETTER GENERATOR PAGE (Phase 4 Dedicated Page) ──── */}
+      {portalTab==="coverletter" && (
+        <CoverLetterPage
+          user={user}
+          token={token}
+          targetJob={coverLetterJob || selectedJob || jobs[0]}
+          onBack={(fromSource, jobId) => {
+            if (fromSource === "job-match" && jobId) {
+              setReportJobId(jobId);
+              setPortalTab("report");
+              window.history.pushState({}, "", `/ai/job-match/${jobId}`);
+            } else {
+              setPortalTab("jobs");
+              window.history.pushState({}, "", "/browse-jobs");
+            }
+          }}
+          API_URL={API}
+        />
+      )}
+
+      {/* ── AI INTERVIEW PREPARATION MODULE ── */}
+      {portalTab==="interview" && (
+        <InterviewPrepPage
+          user={user}
+          token={token}
+          jobs={jobs}
+          myApps={myApps}
+          onBackToJobs={() => {
+            setPortalTab("jobs");
+            window.history.pushState({}, "", "/browse-jobs");
+          }}
+        />
+      )}
+
+      {/* LinkedIn-style Profile Photo Modal */}
+      {isPhotoModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0, 0, 0, 0.85)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            width: 620,
+            background: "#12121c",
+            border: "1px solid #2a2a3e",
+            borderRadius: 12,
+            boxShadow: "0 20px 50px rgba(0,0,0,0.7)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column"
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "16px 24px",
+              borderBottom: "1px solid #1e1e30"
+            }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#e8e0d0" }}>
+                {modalMode === "edit" ? "Adjust photo" : "Profile photo"}
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsPhotoModalOpen(false);
+                  setModalMode("view");
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#888",
+                  fontSize: 20,
+                  cursor: "pointer",
+                  padding: 0
+                }}
+                onMouseOver={e => e.currentTarget.style.color = "#e8e0d0"}
+                onMouseOut={e => e.currentTarget.style.color = "#888"}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{
+              padding: "40px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#0c0c14"
+            }}>
+              {modalMode === "edit" ? (
+                /* Interactive Crop / Edit View */
+                <div 
+                  onMouseDown={handleDragStart}
+                  onMouseMove={handleDragMove}
+                  onMouseUp={handleDragEnd}
+                  onMouseLeave={handleDragEnd}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleDragEnd}
+                  onWheel={handleWheelZoom}
+                  style={{
+                    width: 260,
+                    height: 260,
+                    borderRadius: "50%",
+                    border: "2px solid #c9a84c",
+                    overflow: "hidden",
+                    position: "relative",
+                    cursor: "move",
+                    background: "#000",
+                    boxShadow: "0 0 20px rgba(201,168,76,0.2)"
+                  }}
+                >
+                  <img
+                    src={tempAvatar}
+                    alt="Crop preview"
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+                      transformOrigin: "center center",
+                      objectFit: "cover",
+                      pointerEvents: "none",
+                      userSelect: "none",
+                      maxWidth: "100%",
+                      maxHeight: "100%"
+                    }}
+                  />
+                </div>
+              ) : (
+                /* View Mode */
+                <div style={{
+                  width: 260,
+                  height: 260,
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  border: "2px solid #2a2a3e",
+                  background: "#1a1a2e",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.5)"
+                }}>
+                  {user?.avatar ? (
+                    <img 
+                      src={user.avatar} 
+                      alt={user?.name||""} 
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                    />
+                  ) : (
+                    <div style={{
+                      width: "100%",
+                      height: "100%",
+                      background: "linear-gradient(135deg,#c9a84c,#8b6914)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 110,
+                      fontWeight: 700,
+                      color: "#0a0a14"
+                    }}>
+                      {user?.name?.[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Zoom controls inside Edit mode */}
+              {modalMode === "edit" && (
+                <div style={{ width: "100%", maxWidth: 320, marginTop: 24, display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 18, color: "#888", userSelect: "none" }}>➖</span>
+                  <input 
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.05"
+                    value={zoom}
+                    onChange={e => setZoom(parseFloat(e.target.value))}
+                    style={{
+                      flex: 1,
+                      accentColor: "#c9a84c",
+                      height: 4,
+                      background: "#2a2a3e",
+                      borderRadius: 2,
+                      cursor: "pointer"
+                    }}
+                  />
+                  <span style={{ fontSize: 18, color: "#888", userSelect: "none" }}>➕</span>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer / Actions */}
+            <div style={{
+              padding: "16px 24px",
+              borderTop: "1px solid #1e1e30",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              background: "#12121c"
+            }}>
+              {modalMode === "edit" ? (
+                /* Edit Actions */
+                <>
+                  <span style={{ fontSize: 13, color: "#888" }}>Drag to position · Scroll / slider to zoom</span>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button
+                      onClick={() => setModalMode("view")}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid #2a2a3e",
+                        color: "#e8e0d0",
+                        padding: "8px 18px",
+                        borderRadius: 20,
+                        cursor: "pointer",
+                        fontSize: 14,
+                        fontWeight: 600
+                      }}
+                      onMouseOver={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+                      onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveCroppedPhoto}
+                      style={{
+                        background: "linear-gradient(135deg,#c9a84c,#8b6914)",
+                        border: "none",
+                        color: "#0a0a14",
+                        padding: "8px 24px",
+                        borderRadius: 20,
+                        cursor: "pointer",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        boxShadow: "0 4px 12px rgba(201,168,76,0.3)"
+                      }}
+                      onMouseOver={e => e.currentTarget.style.opacity = "0.9"}
+                      onMouseOut={e => e.currentTarget.style.opacity = "1"}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* View Actions */
+                <>
+                  {/* Left Visibility Pill */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 14px",
+                    borderRadius: 20,
+                    border: "1px solid #2a2a3e",
+                    color: "#e8e0d0",
+                    fontSize: 13,
+                    background: "rgba(255,255,255,0.02)",
+                    userSelect: "none"
+                  }}>
+                    <span>👁</span>
+                    <span style={{ fontWeight: 600 }}>Anyone</span>
+                  </div>
+
+                  {/* Right Menu Actions */}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {user?.avatar && (
+                      <button
+                        onClick={() => {
+                          setTempAvatar(user.avatar);
+                          setZoom(1);
+                          setOffset({ x: 0, y: 0 });
+                          setModalMode("edit");
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "#a1a1aa",
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6
+                        }}
+                        onMouseOver={e => e.currentTarget.style.color = "#c9a84c"}
+                        onMouseOut={e => e.currentTarget.style.color = "#a1a1aa"}
+                      >
+                        <span>✏️</span> Edit
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => document.getElementById("modalPhotoUpdateInput").click()}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#a1a1aa",
+                        padding: "8px 12px",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
+                      }}
+                      onMouseOver={e => e.currentTarget.style.color = "#c9a84c"}
+                      onMouseOut={e => e.currentTarget.style.color = "#a1a1aa"}
+                    >
+                      <span>📤</span> Update Photo
+                    </button>
+
+                    {user?.avatar && (
+                      <button
+                        onClick={handleDeletePhotoDirect}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "#a1a1aa",
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6
+                        }}
+                        onMouseOver={e => e.currentTarget.style.color = "#f87171"}
+                        onMouseOut={e => e.currentTarget.style.color = "#a1a1aa"}
+                      >
+                        <span>🗑️</span> Delete
+                      </button>
+                    )}
+                    
+                    {/* Hidden input for modal update */}
+                    <input 
+                      type="file" 
+                      id="modalPhotoUpdateInput" 
+                      hidden 
+                      accept=".jpg,.jpeg,.png,.webp" 
+                      onChange={handleModalPhotoSelect} 
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -2414,12 +3837,14 @@ export default function App() {
   const [user, setUser]   = useState(savedUser);
   const [token, setToken] = useState(savedToken);
   const [showAuth, setShowAuth] = useState(false);
+  const [isRestoringAuth, setIsRestoringAuth] = useState(!!savedToken);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("token");
     if (t) {
       // Google OAuth callback with token in URL
+      setIsRestoringAuth(true);
       fetch(`${API}/auth/google-success`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({token:t}) })
         .then(r => r.json())
         .then(d => {
@@ -2430,7 +3855,8 @@ export default function App() {
             window.history.replaceState({}, document.title, "/");
           }
         })
-        .catch(err => console.error("Google auth error:", err));
+        .catch(err => console.error("Google auth error:", err))
+        .finally(() => setIsRestoringAuth(false));
     } else if (savedToken) {
       // Refresh user data from DB on every page load so resume, profile, skills are always fresh
       fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${savedToken}` } })
@@ -2446,9 +3872,21 @@ export default function App() {
             setUser(null); setToken(null);
           }
         })
-        .catch(() => { /* Network error – keep cached user */ });
+        .catch(() => { /* Network error – keep cached user */ })
+        .finally(() => setIsRestoringAuth(false));
+    } else {
+      setIsRestoringAuth(false);
     }
   }, []); // run once on mount
+
+  // Sync admin URL route
+  useEffect(() => {
+    if (user?.role === "admin") {
+      if (window.location.pathname !== "/admin") {
+        window.history.replaceState({}, "", "/admin");
+      }
+    }
+  }, [user]);
 
   const handleLogin = (u, t) => {
     setUser(u); setToken(t);
@@ -2476,8 +3914,46 @@ export default function App() {
     setShowAuth(true);
   };
 
-  if (showAuth) return <AuthPage onLogin={handleLogin} />;
+  if (isRestoringAuth) {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        background: "#0a0a14",
+        color: "#c9a84c",
+        fontFamily: "'DM Sans', sans-serif"
+      }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          border: "4px solid rgba(201,168,76,0.1)",
+          borderTop: "4px solid #c9a84c",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+          marginBottom: 16
+        }} />
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <p style={{ margin: 0, fontSize: 14, color: "#888", letterSpacing: 0.5 }}>Restoring session...</p>
+      </div>
+    );
+  }
+
+  if (showAuth) return <AuthPage onLogin={handleLogin} onCancel={() => setShowAuth(false)} />;
   if (user?.role === "admin") return <AdminDashboard user={user} token={token} onLogout={handleLogout} onAddAccount={handleAddAccount} />;
+  if (!user) {
+    return <LandingPage onShowAuth={(mode) => {
+      localStorage.setItem("hh_auth_mode", mode);
+      setShowAuth(true);
+    }} />;
+  }
   return <JobPortal user={user} token={token} onLogout={handleLogout} onAddAccount={handleAddAccount} onShowAuth={(mode) => {
     localStorage.setItem("hh_auth_mode", mode);
     setShowAuth(true);

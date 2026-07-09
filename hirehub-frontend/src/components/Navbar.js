@@ -136,9 +136,12 @@ export default function Navbar({ portalTab, setPortalTab, myApps, user, onLogout
 
       <div style={{ display:"flex", gap:4 }}>
         {[
-          { id:"jobs",    label:"Browse Jobs" },
-          { id:"myapps", label:"My Applications" },
-          { id:"profile", label:"Profile" },
+          { id:"jobs",        label:"Browse Jobs" },
+          { id:"myapps",     label:"My Applications" },
+          { id:"optimizer",   label:"✨ Resume Optimizer" },
+          { id:"coverletter", label:"✉️ Cover Letter" },
+          { id:"interview",   label:"🧠 AI Interview" },
+          { id:"profile",    label:"Profile" },
         ].map(t => (
           <button key={t.id} onClick={() => setPortalTab(t.id)}
             style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"inherit", transition:"var(--transition-fast)",

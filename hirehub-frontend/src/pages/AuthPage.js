@@ -19,7 +19,7 @@ function clientValidateEmail(email) {
   return null;
 }
 
-export default function AuthPage({ onLogin }) {
+export default function AuthPage({ onLogin, onCancel }) {
   const [mode, setMode] = useState(() => {
     try {
       const m = localStorage.getItem("hh_auth_mode") || "reg1";
@@ -105,12 +105,13 @@ export default function AuthPage({ onLogin }) {
   };
 
   const handleReg3 = async () => {
+    if (!password || password.length < 6) { setError("Password must be at least 6 characters."); return; }
     if (password !== confirmPw) { setError("Passwords do not match."); return; }
     setError(""); setLoading(true);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      const r = await fetch(`${API}/auth/register`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name,password,pendingToken,otp}), signal: controller.signal });
+      const r = await fetch(`${API}/auth/register`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name,password,pendingToken,otp,role:"candidate"}), signal: controller.signal });
       clearTimeout(timeoutId);
       const d = await r.json();
       if (!d.success) { setError(d.message); return; }
@@ -129,11 +130,11 @@ export default function AuthPage({ onLogin }) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      const r = await fetch(`${API}/auth/forgot-password`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}), signal: controller.signal });
+      const r = await fetch(`${API}/auth/forgot-password-otp`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email}), signal: controller.signal });
       clearTimeout(timeoutId);
       const d = await r.json();
       if (!d.success) { setError(d.message); return; }
-      setOtp(""); setMode("fp_verify"); setSuccess("OTP sent to your email!");
+      setResetToken(d.resetToken); setOtp(""); setMode("fp_verify"); setSuccess("OTP sent to your email!");
     } catch (err) {
       if (err.name === "AbortError") setError("Request timed out.");
       else setError("Connection failed.");
@@ -145,11 +146,11 @@ export default function AuthPage({ onLogin }) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      const r = await fetch(`${API}/auth/verify-otp`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,otp}), signal: controller.signal });
+      const r = await fetch(`${API}/auth/verify-reset-otp`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({resetToken,otp}), signal: controller.signal });
       clearTimeout(timeoutId);
       const d = await r.json();
       if (!d.success) { setError(d.message); return; }
-      setResetToken(d.resetToken); setMode("fp_reset"); setSuccess("OTP verified!");
+      setResetToken(d.resetToken); setMode("fp_reset"); setSuccess("Reset code verified!");
     } catch (err) {
       if (err.name === "AbortError") setError("Request timed out.");
       else setError("Connection failed.");
@@ -157,16 +158,17 @@ export default function AuthPage({ onLogin }) {
   };
 
   const handleFpReset = async () => {
+    if (!password || password.length < 6) { setError("Password must be at least 6 characters."); return; }
     if (password !== confirmPw) { setError("Passwords do not match."); return; }
     setError(""); setLoading(true);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      const r = await fetch(`${API}/auth/reset-password`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({resetToken,newPassword:password}), signal: controller.signal });
+      const r = await fetch(`${API}/auth/reset-password`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({resetToken,password}), signal: controller.signal });
       clearTimeout(timeoutId);
       const d = await r.json();
       if (!d.success) { setError(d.message); return; }
-      setSuccess(d.message); setMode("login"); setPassword(""); setConfirmPw("");
+      setMode("login"); setSuccess("Password reset successfully! Please sign in.");
     } catch (err) {
       if (err.name === "AbortError") setError("Request timed out.");
       else setError("Connection failed.");
@@ -383,6 +385,20 @@ export default function AuthPage({ onLogin }) {
                 <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
                   style={{ background:"none", border:"none", color:"var(--color-gold-soft)", cursor:"pointer", fontSize:13, fontWeight:600, padding:0 }}>Sign in</button>
               </p>
+            )}
+
+            {/* Back to Home Link */}
+            {onCancel && (
+              <div style={{ textAlign: "center", marginTop: 16, borderTop: "1px solid var(--color-border)", paddingTop: 16 }}>
+                <button 
+                  onClick={onCancel}
+                  style={{ background:"none", border:"none", color:"var(--color-text-muted)", cursor:"pointer", fontSize:13, fontWeight:600, padding:0 }}
+                  onMouseOver={e => e.currentTarget.style.color="var(--color-gold-soft)"}
+                  onMouseOut={e => e.currentTarget.style.color="var(--color-text-muted)"}
+                >
+                  ← Back to Home
+                </button>
+              </div>
             )}
 
           </div>
