@@ -11,6 +11,8 @@ import { S, PasswordInput, PasswordStrength, ConfirmModal } from "./components/U
 import InterviewPrepPage from "./components/InterviewPrepPage";
 import JobFilters from "./components/JobFilters";
 import { DEFAULT_FILTERS, filterAndSortJobs } from "./utils/filterHelpers";
+import { fetchWithRetry } from "./utils/fetchHardening";
+import PremiumLoader from "./components/PremiumLoader";
 
 
 
@@ -1748,24 +1750,22 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     }
   };
 
-  const handleProfileResume = async (e) => {
-    const file = e.target.files?.[0];
+  const handleDirectResumeUpload = async (file) => {
     if (!file) return;
     const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
     const isDocx = file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.name.endsWith(".docx");
-    if (!isPdf && !isDocx) { alert("Only PDF or DOCX files are accepted."); return; }
-    
-    setEditLoading(true); setEditMsg("Extracting skills...");
+    if (!isPdf && !isDocx) { throw new Error("Only PDF or DOCX files are accepted."); }
+
+    let text = "";
     try {
-      let text = "";
       if (isPdf) {
         const pdfjsLib = await loadPdfJs();
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        for (let i=1; i<=pdf.numPages; i++) {
+        for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          text += content.items.map(it=>it.str).join(" ") + "\n";
+          text += content.items.map(it => it.str).join(" ") + "\n";
         }
       } else {
         const mammoth = await loadMammoth();
@@ -1773,9 +1773,20 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
         const result = await mammoth.extractRawText({ arrayBuffer });
         text = result.value;
       }
-      
-      setEditMsg("Uploading resume...");
-      await handleUploadResume(file, text);
+    } catch (e) {
+      console.warn("Failed to parse text from uploaded resume, uploading as-is:", e.message);
+    }
+
+    const updatedUser = await handleUploadResume(file, text);
+    return updatedUser;
+  };
+
+  const handleProfileResume = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEditLoading(true); setEditMsg("Uploading resume...");
+    try {
+      await handleDirectResumeUpload(file);
       setEditMsg("✓ Resume uploaded & skills extracted");
     } catch (err) {
       setEditMsg("Failed to process resume");
@@ -1998,9 +2009,16 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
   const handleAnalyzeJobMatch = async (jobId) => {
     if (!user || !token) { onShowAuth("login"); return; }
-    if (!user?.resumeFilename) { alert("Please upload a resume in your profile first."); return; }
     if (!jobId) return;
     if (jobMatchLoading || analyzingJobRef.current === jobId) return;
+
+    if (!user?.resumeFilename) {
+      setJobMatchError("No resume uploaded yet. Please upload your resume to analyze the match.");
+      setReportJobId(jobId);
+      setPortalTab("report");
+      window.history.pushState({}, "", `/ai/job-match/${jobId}`);
+      return;
+    }
 
     analyzingJobRef.current = jobId;
     setJobMatchLoading(true);
@@ -2010,19 +2028,23 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
     window.history.pushState({}, "", `/ai/job-match/${jobId}`);
 
     try {
-      const res = await fetch(`${API}/ai/job-match`, {
+      const validateJobMatch = (data) => {
+        if (!data) return false;
+        if (data.matchScore === undefined && data.score === undefined) return false;
+        if (!data.strengths || !Array.isArray(data.strengths)) return false;
+        if (!data.improvements || !Array.isArray(data.improvements)) return false;
+        return true;
+      };
+
+      const d = await fetchWithRetry(`${API}/ai/job-match`, {
         method: "POST",
         headers: { ...authHeader, "Content-Type": "application/json" },
         body: JSON.stringify({ jobId }),
-      });
-      const d = await res.json();
-      if (d.success) {
-        setJobMatchMap(prev => ({ ...prev, [jobId]: d.data }));
-      } else {
-        setJobMatchError(d.message || "Failed to analyze job match.");
-      }
+      }, validateJobMatch);
+
+      setJobMatchMap(prev => ({ ...prev, [jobId]: d.data }));
     } catch (err) {
-      setJobMatchError("Could not connect to AI service. Please check your connection.");
+      setJobMatchError(err.message || "Failed to analyze job match.");
     } finally {
       setJobMatchLoading(false);
       analyzingJobRef.current = null;
@@ -3199,6 +3221,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
 
               {/* ── Action Buttons in Job Details ──────────────── */}
               <div style={{
+                marginTop: "48px",
                 marginBottom: 24,
                 display: "flex",
                 justifyContent: "flex-end",
@@ -3255,7 +3278,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                     boxShadow: "0 2px 8px rgba(201,168,76,0.2)"
                   }}
                 >
-                  🧠 Prepare for Interview
+                  🤖 Prepare for Interview
                 </button>
               </div>
 
@@ -3379,16 +3402,16 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                   placeholder={`Message to ${selectedJob?.company}…`} rows={3}
                   style={{ width:"100%", background:"#1a1a2a", border:"1px solid #2a2a3e", borderRadius:8, padding:"10px", color:"#e8e0d0", fontSize:13, lineHeight:1.6, resize:"vertical", outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
               </div>
-              <div style={{ padding:"18px" }}>
+              <div style={{ padding:"18px", display: "flex", justifyContent: "center" }}>
                 {applied[jobKey(selectedJob)] ? (
                   <button disabled
-                    style={{ width:"100%", padding:"13px", borderRadius:8, border:"1px solid #10b981", cursor:"not-allowed",
+                    style={{ width:"60%", padding:"13px", borderRadius:8, border:"1px solid #10b981", cursor:"not-allowed",
                       background:"rgba(16,185,129,0.1)", color:"#10b981", fontSize:15, fontWeight:700 }}>
                     ✓ Applied
                   </button>
                 ) : matchPct >= 40 ? (
                   <button onClick={doApply} disabled={applying}
-                    style={{ width:"100%", padding:"13px", borderRadius:8, border:"none", cursor:applying?"not-allowed":"pointer",
+                    style={{ width:"60%", padding:"13px", borderRadius:8, border:"none", cursor:applying?"not-allowed":"pointer",
                       background:applying?"#2a2a3e":"linear-gradient(135deg,#c9a84c,#a07830)",
                       color:applying?"#9ca3af":"#0a0a14", fontSize:15, fontWeight:700, transition:"all .2s",
                       boxShadow:applying?"none":"0 2px 8px rgba(201,168,76,0.3)" }}
@@ -3397,7 +3420,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
                     {applying ? "SUBMITTING…" : "APPLY NOW"}
                   </button>
                 ) : (
-                  <div style={{ background:"#1a1a2a", border:"1px solid #2a2a3e", borderRadius:8, padding:"18px", textAlign:"center" }}>
+                  <div style={{ width: "100%", background:"#1a1a2a", border:"1px solid #2a2a3e", borderRadius:8, padding:"18px", textAlign:"center" }}>
                     <span style={{ fontSize:22, display:"block", marginBottom:8 }}>⚠️</span>
                     <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#ef4444" }}>Not Eligible</p>
                     <p style={{ margin:"4px 0 0", fontSize:11, color:"#6b7280" }}>Match score below 40%</p>
@@ -3442,6 +3465,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
             }}
             onOptimizeResume={(targetJob) => handleOpenOptimizer(targetJob, "job-match")}
             onGenerateCoverLetter={(targetJob) => handleOpenCoverLetter(targetJob, "job-match")}
+            onUploadResume={handleDirectResumeUpload}
             convertToLPA={convertToLPA}
           />
         );
@@ -3463,6 +3487,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               window.history.pushState({}, "", "/profile");
             }
           }}
+          onUploadResume={handleDirectResumeUpload}
           API_URL={API}
         />
       )}
@@ -3483,6 +3508,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
               window.history.pushState({}, "", "/browse-jobs");
             }
           }}
+          onUploadResume={handleDirectResumeUpload}
           API_URL={API}
         />
       )}
@@ -3498,6 +3524,7 @@ function JobPortal({ user: initialUser, token, onLogout, onAddAccount, onShowAut
             setPortalTab("jobs");
             window.history.pushState({}, "", "/browse-jobs");
           }}
+          onUploadResume={handleDirectResumeUpload}
         />
       )}
 

@@ -1,119 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { S } from './UI';
+import { fetchWithRetry } from '../utils/fetchHardening';
+import AIRobotMascot from './AIRobotMascot';
+import PremiumLoader from './PremiumLoader';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:5000/api" : "https://hirehub-dx1z.onrender.com/api");
 
-const LOADING_MESSAGES = [
-  "Reading Resume...",
-  "Analyzing Job Description...",
-  "Matching Skills...",
-  "Generating HR Questions...",
-  "Generating Technical Questions...",
-  "Creating Personalized Interview...",
-  "Almost Ready..."
-];
-
-// Cute AI Robot Mascot Component
-const AIRobotMascot = ({ size = 80, isFloating = true, isGlowing = true }) => {
-  return (
-    <motion.div
-      animate={isFloating ? { y: [0, -6, 0] } : {}}
-      transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
-      style={{
-        width: size,
-        height: size,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
-        filter: isGlowing ? "drop-shadow(0 0 12px rgba(201, 168, 76, 0.25))" : "none"
-      }}
-    >
-      <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="roboGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#c9a84c" />
-            <stop offset="50%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#3b82f6" />
-          </linearGradient>
-          <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#0a0a14" />
-            <stop offset="100%" stopColor="#040406" />
-          </linearGradient>
-        </defs>
-
-        {/* Outer Halo */}
-        <circle cx="50" cy="45" r="28" fill="rgba(139, 92, 246, 0.05)" />
-
-        {/* Antenna */}
-        <path d="M50 20 L50 9" stroke="url(#roboGrad)" strokeWidth="2.5" strokeLinecap="round" />
-        <motion.circle
-          cx="50"
-          cy="8"
-          r="3"
-          fill="#c9a84c"
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-        />
-
-        {/* Ears */}
-        <rect x="22" y="31" width="6" height="12" rx="3" fill="#2a2a3e" stroke="url(#roboGrad)" strokeWidth="1" />
-        <rect x="72" y="31" width="6" height="12" rx="3" fill="#2a2a3e" stroke="url(#roboGrad)" strokeWidth="1" />
-
-        {/* Neck */}
-        <rect x="44" y="47" width="12" height="5" rx="1.5" fill="#1e1e2f" stroke="#2a2a3e" strokeWidth="1" />
-
-        {/* Head */}
-        <rect x="26" y="17" width="48" height="33" rx="14" fill="#131320" stroke="url(#roboGrad)" strokeWidth="2" />
-
-        {/* Face Screen */}
-        <rect x="31" y="22" width="38" height="23" rx="8" fill="url(#screenGrad)" />
-
-        {/* Eyes with blink animation */}
-        <motion.ellipse
-          cx="43"
-          cy="33"
-          rx="3"
-          ry="3.5"
-          fill="#c9a84c"
-          animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
-          transition={{ repeat: Infinity, duration: 3.5, times: [0, 0.9, 0.92, 0.94, 1], ease: "easeInOut" }}
-          style={{ transformOrigin: "43px 33px" }}
-        />
-        <motion.ellipse
-          cx="57"
-          cy="33"
-          rx="3"
-          ry="3.5"
-          fill="#c9a84c"
-          animate={{ scaleY: [1, 1, 0.1, 1, 1] }}
-          transition={{ repeat: Infinity, duration: 3.5, times: [0, 0.9, 0.92, 0.94, 1], ease: "easeInOut" }}
-          style={{ transformOrigin: "57px 33px" }}
-        />
-
-        {/* Smile mouth */}
-        <path d="M46 39 Q50 41 54 39" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-
-        {/* Main Body */}
-        <path d="M32 52 L68 52 Q74 52 73 59 L70 76 Q69 80 64 80 L36 80 Q31 80 30 76 L27 59 Q26 52 32 52 Z" fill="#131320" stroke="url(#roboGrad)" strokeWidth="2" />
-
-        {/* Chest Light */}
-        <motion.rect
-          x="44"
-          y="60"
-          width="12"
-          height="4"
-          rx="2"
-          fill="#8b5cf6"
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-        />
-      </svg>
-    </motion.div>
-  );
-};
-
-export default function InterviewPrepPage({ token, user, jobs = [], myApps = [], onBackToJobs }) {
+export default function InterviewPrepPage({ token, user, jobs = [], myApps = [], onBackToJobs, onUploadResume }) {
   // Navigation states: 'history' | 'generating' | 'dashboard' | 'mock-interview' | 'scorecard' | 'reopened' | 'error'
   const [prepTab, setPrepTab] = useState('history');
   
@@ -147,15 +41,29 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
   // Reopened session state
   const [reopenedSession, setReopenedSession] = useState(null);
 
-  // Dynamic message rotation & progress bar percentage
-  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  const [fakePercentage, setFakePercentage] = useState(5);
-
   // Debouncing / Request protection blocker state
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Exit dialog confirm popup
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      await onUploadResume(file);
+      loadHistory();
+    } catch (err) {
+      setUploadError(err.message || "Failed to upload resume.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Style objects
   const S = {
@@ -229,10 +137,13 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
       console.warn("[AI Session Restore Warning] Failed to parse active session storage:", e);
     }
 
-    // Otherwise, check if a target job was passed from Browse Jobs details view
-    const targetJobId = localStorage.getItem("hh_interview_target_job_id");
+    // Otherwise, check target job from path or localStorage
+    const pathMatch = window.location.pathname.match(/\/ai\/interview-prep\/([a-fA-F0-9]{24})/);
+    const pathJobId = pathMatch ? pathMatch[1] : null;
+    const targetJobId = pathJobId || localStorage.getItem("hh_interview_target_job_id");
+
     if (targetJobId && jobs.length > 0) {
-      const job = jobs.find(j => j._id === targetJobId);
+      const job = jobs.find(j => (j._id || j.id) === targetJobId);
       if (job) {
         localStorage.removeItem("hh_interview_target_job_id");
         handleStartNewPrep(job);
@@ -240,29 +151,7 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
     }
   }, [jobs]);
 
-  // Loading indicator states intervals
-  useEffect(() => {
-    if (prepTab === 'generating') {
-      const msgInterval = setInterval(() => {
-        setLoadingMsgIdx(idx => (idx + 1) % LOADING_MESSAGES.length);
-      }, 2500);
 
-      const pctInterval = setInterval(() => {
-        setFakePercentage(p => {
-          if (p >= 95) return p;
-          return p + Math.floor(Math.random() * 8) + 2;
-        });
-      }, 400);
-
-      return () => {
-        clearInterval(msgInterval);
-        clearInterval(pctInterval);
-      };
-    } else {
-      setLoadingMsgIdx(0);
-      setFakePercentage(5);
-    }
-  }, [prepTab]);
 
   const loadHistory = async () => {
     if (!token) return;
@@ -293,80 +182,39 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
     setActiveJob(job);
     setPrepTab('generating');
     setGenError("");
-    setFakePercentage(5);
 
-    const maxRetries = 3;
-    let attempt = 0;
-    let success = false;
-    let lastError = null;
-
-    const runAttempt = async () => {
-      const controller = new AbortController();
-      // Section 6: Loading timeout of 30 seconds
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      try {
-        const res = await fetch(`${API}/ai/interview/generate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ jobId: job._id }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (res.status === 429 || res.status >= 500) {
-          throw new Error(`Server returned HTTP status ${res.status}`);
-        }
-
-        const json = await res.json();
-        if (!json.success) {
-          throw new Error(json.message || "AI failed to compile questions.");
-        }
-
-        // Section 3: Validate AI response has readiness and questions schema
-        const d = json.data;
+    try {
+      const validateInterviewPrep = (responseObj) => {
+        if (!responseObj) return false;
+        const d = responseObj.data || responseObj;
         const totalQsCount = (d?.hrQuestions?.length || 0) +
                              (d?.technicalQuestions?.length || 0) +
                              (d?.codingQuestions?.length || 0) +
                              (d?.scenarioQuestions?.length || 0) +
                              (d?.behavioralQuestions?.length || 0);
-
         if (typeof d?.readinessScore !== "number" || totalQsCount === 0) {
-          throw new Error("AI returned an incomplete questions database payload.");
+          return false;
         }
+        return true;
+      };
 
-        setPrepData(d);
-        setPrepTab('dashboard');
-        success = true;
-      } catch (err) {
-        clearTimeout(timeoutId);
-        lastError = err;
-        // Section 5: Log full errors only in the browser console
-        console.error(`[AI Generate Attempt ${attempt} Error]:`, err);
-      }
-    };
+      const json = await fetchWithRetry(`${API}/ai/interview/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ jobId: job._id })
+      }, validateInterviewPrep);
 
-    // Retry loop with exponential backoff
-    while (attempt < maxRetries && !success) {
-      attempt++;
-      await runAttempt();
-
-      if (!success && attempt < maxRetries) {
-        const backoffMs = Math.round(Math.pow(2.5, attempt - 1) * 2000);
-        console.warn(`[AI Generation] Retrying after failure in ${backoffMs}ms...`);
-        await new Promise(resolve => setTimeout(resolve, backoffMs));
-      }
-    }
-
-    setIsGenerating(false);
-
-    if (!success) {
-      // Clean, user-friendly message without stack trace exposure
-      setGenError("We couldn't prepare your interview this time.");
+      setPrepData(json.data);
+      setPrepTab('dashboard');
+    } catch (err) {
+      console.error("[AI Interview Generation Failed]:", err);
+      setGenError("We couldn't prepare your interview this time. Please check your connection and try again.");
       setPrepTab('error');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -658,91 +506,6 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
     );
   };
 
-  const renderPremiumLoader = () => {
-    return (
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(5, 5, 10, 0.96)",
-        backdropFilter: "blur(16px)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        color: "#e8e0d0"
-      }}>
-        <div style={{ position: "relative", width: 220, height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          
-          {/* Circular animated progress ring */}
-          <motion.svg width="190" height="190" viewBox="0 0 100 100" style={{ position: "absolute" }}>
-            <defs>
-              <linearGradient id="glowgrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#c9a84c" />
-                <stop offset="50%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#ec4899" />
-              </linearGradient>
-            </defs>
-            <motion.circle
-              cx="50"
-              cy="50"
-              r="43"
-              fill="none"
-              stroke="url(#glowgrad)"
-              strokeWidth="2.5"
-              strokeDasharray="30 50 15 25"
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-              style={{ transformOrigin: "50px 50px" }}
-            />
-            <motion.circle
-              cx="50"
-              cy="50"
-              r="36"
-              fill="none"
-              stroke="#c9a84c"
-              strokeWidth="1"
-              strokeDasharray="5 15"
-              strokeOpacity="0.4"
-              animate={{ rotate: -360 }}
-              transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-              style={{ transformOrigin: "50px 50px" }}
-            />
-          </motion.svg>
-
-          {/* Mini Robot Mascot floating inside ring */}
-          <AIRobotMascot size={75} />
-
-          {/* Progress Percentage */}
-          <div style={{ position: "absolute", bottom: -20, fontSize: 13, fontWeight: 700, color: "#c9a84c", letterSpacing: 1 }}>
-            {fakePercentage}%
-          </div>
-        </div>
-
-        {/* Dynamic Loading steps copy */}
-        <div style={{ minHeight: "80px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <h2 style={{ marginTop: 45, fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 600, letterSpacing: 1.2, color: "#e8e0d0", margin: "45px 0 6px" }}>
-            Preparing Your Interview...
-          </h2>
-          <AnimatePresence mode="wait">
-            <motion.h4
-              key={loadingMsgIdx}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              style={{ margin: 0, fontSize: 13, color: "#c9a84c", letterSpacing: 0.5, fontWeight: 600 }}
-            >
-              {LOADING_MESSAGES[loadingMsgIdx]}
-            </motion.h4>
-          </AnimatePresence>
-        </div>
-        
-        <p style={{ fontSize: 11, color: "#555", marginTop: 12, letterSpacing: 0.5 }}>Synthesizing custom questions loop...</p>
-      </div>
-    );
-  };
-
   const renderEmptyState = () => (
     <div style={{
       display: "flex",
@@ -884,8 +647,7 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
         </div>
 
         {/* Start / Continue Button */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-          <div></div>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 12 }}>
           <button
             id="mock-start-or-continue-btn"
             onClick={isInProgress ? handleContinueMockInterview : handleStartMockInterview}
@@ -905,9 +667,13 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
           <button
             onClick={handleExitCleanly}
             style={{
-              ...S.btnSec,
-              fontSize: 12,
-              padding: "8px 16px"
+              ...S.btn,
+              fontSize: 16,
+              padding: "16px 48px",
+              boxShadow: "0 4px 20px rgba(201, 168, 76, 0.4)",
+              display: "flex",
+              alignItems: "center",
+              gap: 12
             }}
           >
             Exit Dashboard
@@ -981,11 +747,66 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
     );
   };
 
+  if (!user?.resumeFilename) {
+    return (
+      <div style={{ flex: 1, padding: "36px 20px", maxWidth: 900, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        {uploading && <PremiumLoader title="Uploading Resume & Parsing..." />}
+        <button onClick={onBackToJobs} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, marginBottom: 20 }}>
+          ← Back to Jobs
+        </button>
+        <div style={{ background: "rgba(17, 17, 26, 0.75)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 16, padding: "44px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+          <AIRobotMascot size={80} isFloating={true} />
+          <h3 style={{ color: "#c9a84c", margin: 0, fontSize: 22, fontFamily: "'Cormorant Garamond', serif" }}>
+            Resume Required for Interview Prep
+          </h3>
+          <p style={{ color: "#9ca3af", margin: 0, fontSize: 14, maxWidth: 500, lineHeight: 1.6 }}>
+            Please upload your resume to generate customized interview questions and simulations.
+          </p>
+          
+          <div 
+            style={{
+              border: "2px dashed #2a2a3e",
+              borderRadius: 12,
+              padding: "36px 20px",
+              width: "100%",
+              maxWidth: 480,
+              background: "rgba(255,255,255,0.01)",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onClick={() => document.getElementById("interviewResumeInput").click()}
+            onMouseOver={e => e.currentTarget.style.borderColor = "#c9a84c"}
+            onMouseOut={e => e.currentTarget.style.borderColor = "#2a2a3e"}
+          >
+            <span style={{ fontSize: 32, display: "block", marginBottom: 12 }}>📄</span>
+            <span style={{ fontSize: 13, color: "#888", display: "block" }}>
+              Click to browse or drag PDF/DOCX file here
+            </span>
+            <input 
+              id="interviewResumeInput" 
+              type="file" 
+              accept=".pdf,.docx" 
+              onChange={handleFileChange} 
+              style={{ display: "none" }} 
+            />
+          </div>
+          
+          {uploadError && (
+            <p style={{ color: "#f87171", fontSize: 12, margin: 0 }}>
+              ⚠️ {uploadError}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px", background: "#05050A", color: "#e8e0d0", minHeight: "100%" }}>
       
       {/* Dynamic Fullscreen Loading Overlay */}
-      {prepTab === 'generating' && renderPremiumLoader()}
+      {prepTab === 'generating' && <PremiumLoader title="Preparing Your Interview..." />}
+      {uploading && <PremiumLoader title="Uploading Resume & Parsing..." />}
 
       {/* HEADER SECTION (Only show when not loading or in mock loop) */}
       {prepTab !== 'generating' && prepTab !== 'mock-interview' && (
@@ -996,16 +817,8 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
               <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontWeight: 600, color: "#e8e0d0", margin: 0 }}>
                 AI Interview Preparation
               </h1>
-              <p style={{ color: "#9ca3af", fontSize: 13, margin: "4px 0 0" }}>
-                Tailor-made practice questions guide and AI-evaluated mock interview simulations.
-              </p>
             </div>
           </div>
-          {prepTab !== 'history' && (
-            <button onClick={handleExitCleanly} style={S.btnSec}>
-              ← Exit Dashboard
-            </button>
-          )}
         </div>
       )}
 
@@ -1073,7 +886,7 @@ export default function InterviewPrepPage({ token, user, jobs = [], myApps = [],
                 onClick={() => setPrepTab('dashboard')}
                 style={{ ...S.btnSec, padding: "8px 16px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
               >
-                ← Back to Dashboard
+                ← Back
               </button>
               <span style={{ fontSize: 11, background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)", padding: "4px 10px", borderRadius: 8, color: "#c9a84c", fontWeight: 700 }}>
                 {q.type} Category

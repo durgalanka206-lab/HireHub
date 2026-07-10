@@ -56,7 +56,7 @@ class GeminiProvider {
             console.warn(`[GeminiProvider] Model '${modelName}' rate limited, retrying in ${backoffMs}ms...`);
             await this.sleep(backoffMs);
           } else {
-            console.warn(`[GeminiProvider] Model '${modelName}' failed: ${msg.substring(0, 120)}`);
+            console.warn(`[GeminiProvider] Model '${modelName}' failed:`, err);
             break; // Try next model
           }
         }

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { S } from './UI';
+import AIRobotMascot from './AIRobotMascot';
+import PremiumLoader from './PremiumLoader';
 
 /**
  * AI Job Match Report Page Component
@@ -20,8 +22,27 @@ export default function JobMatchReportPage({
   onAnalyzeAgain,
   onOptimizeResume,
   onGenerateCoverLetter,
+  onUploadResume,
   convertToLPA,
 }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      await onUploadResume(file);
+      onAnalyzeAgain();
+    } catch (err) {
+      setUploadError(err.message || "Failed to upload resume.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const [activeTooltip, setActiveTooltip] = useState("");
   const [activeSectionTab, setActiveSectionTab] = useState("skills"); // "skills" | "audit" | "roadmap" | "salary"
 
@@ -31,39 +52,108 @@ export default function JobMatchReportPage({
   };
 
   if (loading) {
+    return <PremiumLoader title="Analyzing Job Match..." />;
+  }
+
+  if (error && error.toLowerCase().includes("resume")) {
     return (
-      <div style={{ flex: 1, padding: "40px 20px", maxWidth: 1000, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-        {/* Back button */}
-        <button onClick={onBack} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+      <div style={{ flex: 1, padding: "40px 20px", maxWidth: 900, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        {uploading && <PremiumLoader title="Uploading Resume & Parsing..." />}
+        <button onClick={onBack} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, marginBottom: 24 }}>
           ← Back to Job Details
         </button>
-
-        {/* Loading Skeleton */}
-        <div style={{ background: "linear-gradient(135deg, #0d0d1f 0%, #111128 100%)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 16, padding: "40px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", border: "4px solid #1e1e30", borderTopColor: "#c9a84c", animation: "spin 0.9s linear infinite" }} />
-          <h2 style={{ fontFamily: "'Cormorant Garamond', serif", color: "#e8e0d0", margin: 0, fontSize: 24 }}>Generating AI Job Match Report…</h2>
-          <p style={{ color: "#888", fontSize: 14, margin: 0, textAlign: "center" }}>Evaluating your resume against {job?.title || "job requirements"} at {job?.company || "company"}…</p>
+        <div style={{ background: "rgba(17, 17, 26, 0.75)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 16, padding: "44px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+          <AIRobotMascot size={80} isFloating={true} />
+          <h3 style={{ color: "#c9a84c", margin: 0, fontSize: 22, fontFamily: "'Cormorant Garamond', serif" }}>
+            Resume Required for Match Analysis
+          </h3>
+          <p style={{ color: "#9ca3af", margin: 0, fontSize: 14, maxWidth: 500, lineHeight: 1.6 }}>
+            {error}
+          </p>
           
-          <div style={{ width: "100%", maxWidth: 600, height: 8, background: "#1a1a2e", borderRadius: 4, overflow: "hidden", marginTop: 10 }}>
-            <div style={{ height: "100%", background: "linear-gradient(90deg, #c9a84c, #8b6914)", width: "65%", borderRadius: 4, animation: "pulse 1.5s infinite" }} />
+          <div 
+            style={{
+              border: "2px dashed #2a2a3e",
+              borderRadius: 12,
+              padding: "36px 20px",
+              width: "100%",
+              maxWidth: 480,
+              background: "rgba(255,255,255,0.01)",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onClick={() => document.getElementById("directResumeInput").click()}
+            onMouseOver={e => e.currentTarget.style.borderColor = "#c9a84c"}
+            onMouseOut={e => e.currentTarget.style.borderColor = "#2a2a3e"}
+          >
+            <span style={{ fontSize: 32, display: "block", marginBottom: 12 }}>📄</span>
+            <span style={{ fontSize: 13, color: "#888", display: "block" }}>
+              Click to browse or drag PDF/DOCX file here
+            </span>
+            <input 
+              id="directResumeInput" 
+              type="file" 
+              accept=".pdf,.docx" 
+              onChange={handleFileChange} 
+              style={{ display: "none" }} 
+            />
           </div>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{ opacity:0.6 } 50%{ opacity:1 } }`}</style>
+          
+          {uploadError && (
+            <p style={{ color: "#f87171", fontSize: 12, margin: 0 }}>
+              ⚠️ {uploadError}
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
   if (error) {
+    console.warn("[Job Match Failure Detail]:", error);
     return (
       <div style={{ flex: 1, padding: "40px 20px", maxWidth: 900, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         <button onClick={onBack} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, marginBottom: 24 }}>
           ← Back to Job Details
         </button>
-        <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 16, padding: "32px", textAlign: "center" }}>
-          <span style={{ fontSize: 36, display: "block", marginBottom: 12 }}>⚠️</span>
-          <h3 style={{ color: "#f87171", margin: "0 0 8px", fontSize: 20 }}>Job Match Report Failed</h3>
-          <p style={{ color: "#d1d5db", margin: "0 0 20px", fontSize: 14 }}>{error}</p>
-          <button onClick={onAnalyzeAgain} style={{ ...S.btn, margin: "0 auto" }}>Try Again</button>
+        <div style={{ background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 16, padding: "40px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <AIRobotMascot size={70} isFloating={false} isGlowing={false} />
+          <h3 style={{ color: "#f87171", margin: 0, fontSize: 20 }}>We couldn't complete your request.</h3>
+          <p style={{ color: "#d1d5db", margin: 0, fontSize: 14 }}>This is usually temporary. Please try again.</p>
+          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+            <button 
+              onClick={onAnalyzeAgain} 
+              style={{
+                background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                color: "#05050A",
+                border: "none",
+                borderRadius: "8px",
+                padding: "12px 24px",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: "14px",
+                letterSpacing: "0.5px",
+                fontFamily: "'DM Sans', sans-serif"
+              }}
+            >
+              Try Again
+            </button>
+            <button 
+              onClick={onBack} 
+              style={{
+                background: "transparent",
+                border: "1px solid #2a2a3e",
+                color: "#9ca3af",
+                cursor: "pointer",
+                padding: "12px 24px",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 600
+              }}
+            >
+              Back
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -93,25 +183,8 @@ export default function JobMatchReportPage({
   }
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", background: "#06060c", padding: "28px 20px 40px", boxSizing: "border-box" }}>
-      <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
-
-        {/* Top Header Controls */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <button onClick={onBack} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-            ← Back to Job Details
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {isApplied && (
-              <span style={{ fontSize: 12, background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)", padding: "4px 12px", borderRadius: 20, fontWeight: 700 }}>
-                ✓ Applied
-              </span>
-            )}
-            <span style={{ fontSize: 12, background: "rgba(201,168,76,0.12)", color: "#c9a84c", border: "1px solid rgba(201,168,76,0.3)", padding: "4px 12px", borderRadius: 20, fontWeight: 600 }}>
-              ✨ Official AI Match Report
-            </span>
-          </div>
-        </div>
+    <div style={{ flex: 1, overflowY: "auto", background: "#080811", padding: "24px 20px 40px", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: 1140, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
 
         {/* HERO SECTION / GENERAL METRICS */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -221,45 +294,6 @@ export default function JobMatchReportPage({
           </div>
         </div>
 
-        {/* 4. QUICK ACTIONS BAR */}
-        <div style={{
-          background: "linear-gradient(135deg, #111122 0%, #15152a 100%)",
-          border: "1px solid rgba(201,168,76,0.25)",
-          borderRadius: 14,
-          padding: "16px 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 12,
-          boxShadow: "0 8px 30px rgba(0,0,0,0.5)"
-        }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {isApplied ? (
-              <button onClick={onGoToMyApps} style={{ padding: "10px 20px", borderRadius: 8, border: "1px solid #10b981", background: "rgba(16,185,129,0.15)", color: "#10b981", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                ✓ Applied · View Status
-              </button>
-            ) : (
-              <button onClick={() => onApply(job)} style={{ ...S.btn, padding: "10px 22px", fontSize: 13 }}>
-                ⚡ Apply Now
-              </button>
-            )}
-            <button onClick={() => onOptimizeResume ? onOptimizeResume(job) : null}
-              style={{ ...S.btn, background: "transparent", border: "1px solid rgba(201,168,76,0.4)", color: "#c9a84c", padding: "10px 18px", fontSize: 13 }}>
-              ✨ Optimize Resume
-            </button>
-            <button onClick={() => onGenerateCoverLetter ? onGenerateCoverLetter(job) : null}
-              style={{ ...S.btn, background: "transparent", border: "1px solid rgba(96,165,250,0.4)", color: "#60a5fa", padding: "10px 18px", fontSize: 13 }}>
-              ✉️ Generate Cover Letter
-            </button>
-          </div>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onAnalyzeAgain} style={{ background: "transparent", border: "1px solid rgba(201,168,76,0.2)", color: "#c9a84c", padding: "10px 16px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-              🔄 Re-Analyze
-            </button>
-          </div>
-        </div>
 
         {/* Tooltip Notification Alert */}
         {activeTooltip && (
@@ -401,6 +435,66 @@ export default function JobMatchReportPage({
               </div>
             )}
 
+          </div>
+        </div>
+
+        {/* Action Bar Below Report Sections */}
+        <div style={{
+          background: "linear-gradient(135deg, #111122 0%, #15152a 100%)",
+          border: "1px solid rgba(201,168,76,0.3)",
+          borderRadius: 14,
+          padding: "14px 20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+          width: "100%",
+          boxSizing: "border-box"
+        }}>
+          {/* Left Back Button */}
+          <button
+            onClick={onBack}
+            style={{
+              background: "transparent",
+              border: "1px solid #2a2a3e",
+              color: "#c9a84c",
+              borderRadius: 8,
+              padding: "8px 16px",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            ← Back to Jobs
+          </button>
+
+          {/* Right Action Controls Group */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {isApplied ? (
+              <button onClick={onGoToMyApps} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #10b981", background: "rgba(16,185,129,0.15)", color: "#10b981", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                ✓ Applied · View Status
+              </button>
+            ) : (
+              <button onClick={() => onApply(job)} style={{ ...S.btn, padding: "8px 16px", fontSize: 12 }}>
+                ⚡ Apply Now
+              </button>
+            )}
+            <button onClick={() => onOptimizeResume ? onOptimizeResume(job) : null}
+              style={{ ...S.btn, background: "transparent", border: "1px solid rgba(201,168,76,0.4)", color: "#c9a84c", padding: "8px 16px", fontSize: 12 }}>
+              ✨ Optimize Resume
+            </button>
+            <button onClick={() => onGenerateCoverLetter ? onGenerateCoverLetter(job) : null}
+              style={{ ...S.btn, background: "transparent", border: "1px solid rgba(96,165,250,0.4)", color: "#60a5fa", padding: "8px 16px", fontSize: 12 }}>
+              ✉️ Generate Cover Letter
+            </button>
+            <button onClick={onAnalyzeAgain} style={{ background: "transparent", border: "1px solid rgba(201,168,76,0.2)", color: "#c9a84c", padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              🔄 Re-Analyze
+            </button>
           </div>
         </div>
 

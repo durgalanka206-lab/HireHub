@@ -174,34 +174,34 @@ export default function ResumePreview({ user = {}, optimizationData = {} }) {
   return (
     <div style={{
       background: "#0d0d1c",
-      borderRadius: 16,
+      borderRadius: 12,
       border: "1px solid rgba(201,168,76,0.3)",
-      padding: "24px 28px",
+      padding: "20px 24px",
       display: "flex",
       flexDirection: "column",
-      gap: 20,
+      gap: 16,
     }}>
       {/* Top Controls */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div>
-          <h4 style={{ margin: 0, fontSize: 18, color: "#e8e0d0", fontWeight: 700, fontFamily: "'Cormorant Garamond', serif" }}>
+          <h4 style={{ margin: 0, fontSize: 16, color: "#e8e0d0", fontWeight: 700, fontFamily: "'Cormorant Garamond', serif" }}>
             📄 Live Optimized Resume Document Preview
           </h4>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#888" }}>
+          <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>
             Truthful, ATS-formatted resume ready for export
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             onClick={handleDownloadDOCX}
             style={{
-              padding: "10px 18px",
+              padding: "8px 16px",
               borderRadius: 8,
               border: "1px solid rgba(96,165,250,0.4)",
               background: "rgba(96,165,250,0.12)",
               color: "#60a5fa",
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 700,
               cursor: "pointer",
               display: "flex",
@@ -215,12 +215,12 @@ export default function ResumePreview({ user = {}, optimizationData = {} }) {
           <button
             onClick={handleDownloadPDF}
             style={{
-              padding: "10px 20px",
+              padding: "8px 18px",
               borderRadius: 8,
               border: "none",
               background: "linear-gradient(135deg, #c9a84c, #8b6914)",
               color: "#000",
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 700,
               cursor: "pointer",
               display: "flex",

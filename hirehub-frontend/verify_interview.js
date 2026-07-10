@@ -86,9 +86,17 @@ const puppeteer = require('puppeteer');
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   console.log('Waiting for AI generation & custom loading overlay...');
-  await page.waitForFunction(() => {
-    return !document.body.textContent.includes('Synthesizing custom questions loop...');
-  }, { timeout: 90000 });
+  try {
+    await page.waitForFunction(() => {
+      return !document.body.textContent.includes('Preparing Your Interview...');
+    }, { timeout: 90000 });
+  } catch (err) {
+    console.error('TIMED OUT WAITING FOR OVERLAY. Capturing diagnostic info...');
+    await page.screenshot({ path: 'C:/Users/lanka/.gemini/antigravity/brain/f144c642-b8d7-4bc3-8af8-5e9020072218/scratch/overlay_timeout.png' });
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    console.log('Active Page Text:\n', bodyText);
+    throw err;
+  }
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   const dashboardLoaded = await page.evaluate(() => {

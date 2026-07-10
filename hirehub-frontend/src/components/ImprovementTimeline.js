@@ -16,7 +16,7 @@ export default function ImprovementTimeline({ improvements = {} }) {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
       {categories.map((cat) => {
         const list = Array.isArray(improvements[cat.key]) ? improvements[cat.key] : [];
 
@@ -25,48 +25,48 @@ export default function ImprovementTimeline({ improvements = {} }) {
             key={cat.key}
             style={{
               background: "#0c0c1a",
-              borderRadius: 12,
+              borderRadius: 10,
               border: `1px solid ${cat.border}`,
-              padding: "18px",
+              padding: "14px",
               display: "flex",
               flexDirection: "column",
-              gap: 12,
+              gap: 10,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 borderRadius: 8,
                 background: cat.bg,
                 border: `1px solid ${cat.border}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 15,
+                fontSize: 13,
               }}>
                 {cat.icon}
               </div>
               <div>
-                <h5 style={{ margin: 0, fontSize: 14, color: cat.color, fontWeight: 700 }}>
+                <h5 style={{ margin: 0, fontSize: 13, color: cat.color, fontWeight: 700 }}>
                   {cat.label}
                 </h5>
-                <span style={{ fontSize: 10, color: "#666" }}>
+                <span style={{ fontSize: 9, color: "#666" }}>
                   {list.length} improvement item{list.length !== 1 ? "s" : ""}
                 </span>
               </div>
             </div>
 
             {list.length > 0 ? (
-              <ul style={{ margin: 0, padding: "0 0 0 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <ul style={{ margin: 0, padding: "0 0 0 16px", display: "flex", flexDirection: "column", gap: 5 }}>
                 {list.map((item, idx) => (
-                  <li key={idx} style={{ color: "#d1d5db", fontSize: 12, lineHeight: 1.5 }}>
+                  <li key={idx} style={{ color: "#d1d5db", fontSize: 11, lineHeight: 1.5 }}>
                     {item}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p style={{ margin: 0, color: "#666", fontSize: 12, fontStyle: "italic" }}>
+              <p style={{ margin: 0, color: "#666", fontSize: 11, fontStyle: "italic" }}>
                 ✓ Optimized & aligned according to ATS standards.
               </p>
             )}

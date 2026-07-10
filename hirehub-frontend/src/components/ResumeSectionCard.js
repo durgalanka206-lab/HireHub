@@ -28,14 +28,14 @@ export default function ResumeSectionCard({
       transition={{ duration: 0.3 }}
       style={{
         ...S.card,
-        padding: "22px 26px",
+        padding: "18px 20px",
         background: "linear-gradient(135deg, #0e0e1e 0%, #121226 100%)",
         border: `1px solid ${borderColor}`,
-        borderRadius: 16,
+        borderRadius: 12,
         boxShadow: "0 12px 35px rgba(0,0,0,0.4)",
         display: "flex",
         flexDirection: "column",
-        gap: isOpen ? 16 : 0,
+        gap: isOpen ? 12 : 0,
         transition: "all 0.2s ease",
         ...style,
       }}
@@ -48,25 +48,25 @@ export default function ResumeSectionCard({
           alignItems: "center",
           justifyContent: "space-between",
           flexWrap: "wrap",
-          gap: 12,
+          gap: 10,
           borderBottom: isOpen ? "1px solid #1a1a2e" : "1px solid transparent",
-          paddingBottom: isOpen ? 14 : 0,
+          paddingBottom: isOpen ? 10 : 0,
           cursor: collapsible ? "pointer" : "default",
           userSelect: "none",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {icon && (
             <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
+              width: 32,
+              height: 32,
+              borderRadius: 8,
               background: "linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05))",
               border: "1px solid rgba(201,168,76,0.3)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 16,
+              fontSize: 14,
               flexShrink: 0,
             }}>
               {icon}
@@ -75,24 +75,24 @@ export default function ResumeSectionCard({
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {sectionNumber && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#c9a84c", textTransform: "uppercase", letterSpacing: 1 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: "#c9a84c", textTransform: "uppercase", letterSpacing: 1 }}>
                   SECTION {sectionNumber}
                 </span>
               )}
             </div>
-            <h3 style={{ margin: "2px 0 0", fontSize: 17, fontWeight: 700, color: "#e8e0d0", fontFamily: "'Cormorant Garamond', serif" }}>
+            <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "#e8e0d0", fontFamily: "'Cormorant Garamond', serif" }}>
               {title}
             </h3>
-            {subtitle && <p style={{ margin: "2px 0 0", fontSize: 12, color: "#888" }}>{subtitle}</p>}
+            {subtitle && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>{subtitle}</p>}
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {badge && (
             <div style={{
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: 600,
-              padding: "4px 12px",
+              padding: "3px 10px",
               borderRadius: 20,
               background: badge.bg || "rgba(201,168,76,0.12)",
               color: badge.color || "#c9a84c",
@@ -110,8 +110,8 @@ export default function ResumeSectionCard({
                 border: isOpen ? "1px solid rgba(201,168,76,0.3)" : "1px solid #2a2a3e",
                 color: isOpen ? "#c9a84c" : "#9ca3af",
                 borderRadius: 8,
-                padding: "6px 14px",
-                fontSize: 12,
+                padding: "5px 12px",
+                fontSize: 11,
                 cursor: "pointer",
                 fontWeight: 600,
                 display: "flex",

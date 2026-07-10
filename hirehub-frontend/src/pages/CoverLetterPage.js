@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CoverLetterToolbar from '../components/CoverLetterToolbar';
 import CoverLetterEditor from '../components/CoverLetterEditor';
 import CoverLetterSidebar from '../components/CoverLetterSidebar';
+import { fetchWithRetry } from '../utils/fetchHardening';
+import AIRobotMascot from '../components/AIRobotMascot';
+import PremiumLoader from '../components/PremiumLoader';
 
 /**
  * AI Cover Letter Page Component — /ai/cover-letter
@@ -14,6 +17,7 @@ export default function CoverLetterPage({
   token,
   targetJob,
   onBack,
+  onUploadResume,
   API_URL,
 }) {
   const [loading, setLoading] = useState(false);
@@ -22,6 +26,25 @@ export default function CoverLetterPage({
   const [editedText, setEditedText] = useState("");
   const [selectedTone, setSelectedTone] = useState("Professional");
   const [isEditorExpanded, setIsEditorExpanded] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [localFileMissing, setLocalFileMissing] = useState(false);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      await onUploadResume(file);
+      setLocalFileMissing(false);
+      handleGenerateCoverLetter(selectedTone);
+    } catch (err) {
+      setUploadError(err.message || "Failed to upload resume.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const isGeneratingRef = React.useRef(false);
 
@@ -45,7 +68,13 @@ export default function CoverLetterPage({
 
     try {
       const jobId = targetJob._id || targetJob.id;
-      const res = await fetch(`${API_URL}/ai/generate-cover-letter`, {
+      const validateCoverLetter = (data) => {
+        if (!data) return false;
+        if (!data.fullText && !data.content && !data.coverLetter) return false;
+        return true;
+      };
+
+      const data = await fetchWithRetry(`${API_URL}/ai/generate-cover-letter`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,19 +84,17 @@ export default function CoverLetterPage({
           jobId,
           tone: toneToUse,
         }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || data.error?.message || "Failed to generate cover letter.");
-      }
+      }, validateCoverLetter);
 
       setCoverLetterData(data.data);
       setEditedText(data.data.fullText || "");
     } catch (err) {
       console.error("[Cover Letter Generator] Error:", err);
-      setError(err.message || "Failed to generate cover letter.");
+      if (err.code === "RESUME_PARSE_ERROR" || (err.message && err.message.includes("not found on server"))) {
+        setLocalFileMissing(true);
+      } else {
+        setError(err.message || "Failed to generate cover letter.");
+      }
     } finally {
       setLoading(false);
       isGeneratingRef.current = false;
@@ -75,10 +102,16 @@ export default function CoverLetterPage({
   };
 
   useEffect(() => {
-    if (token && user?.resumeFilename && targetJob && !coverLetterData && !loading && !error && !isGeneratingRef.current) {
+    setCoverLetterData(null);
+    setEditedText("");
+    setLocalFileMissing(false);
+  }, [user?.resumeFilename]);
+
+  useEffect(() => {
+    if (token && user?.resumeFilename && targetJob && !coverLetterData && !loading && !error && !isGeneratingRef.current && !localFileMissing) {
       handleGenerateCoverLetter(selectedTone);
     }
-  }, [token, targetJob]);
+  }, [token, user?.resumeFilename, targetJob, coverLetterData, localFileMissing]);
 
   const handleSelectTone = (newTone) => {
     setSelectedTone(newTone);
@@ -192,43 +225,109 @@ export default function CoverLetterPage({
   const charCount = (editedText || "").length;
   const hasEdits = coverLetterData?.fullText && editedText !== coverLetterData.fullText;
 
-  if (loading) {
+  if (!user?.resumeFilename || localFileMissing) {
     return (
-      <div style={{ flex: 1, padding: "36px 20px", maxWidth: 1000, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-        <button onClick={handleBack} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+      <div style={{ flex: 1, padding: "36px 20px", maxWidth: 900, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        {uploading && <PremiumLoader title="Uploading Resume & Parsing..." />}
+        <button onClick={handleBack} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, marginBottom: 20 }}>
           ← Back
         </button>
-
-        <div style={{ background: "linear-gradient(135deg, #0d0d1f 0%, #111128 100%)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 16, padding: "44px 32px", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, textAlign: "center" }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", border: "4px solid #1e1e30", borderTopColor: "#c9a84c", animation: "spin 0.9s linear infinite" }} />
-          <h2 style={{ fontFamily: "'Cormorant Garamond', serif", color: "#e8e0d0", margin: 0, fontSize: 24 }}>
-            ✉️ Generating Personalized Cover Letter…
-          </h2>
-          <p style={{ color: "#888", fontSize: 13, margin: 0, maxWidth: 480 }}>
-            Weaving your resume experience and skills with {targetJob?.company || "target company"}'s role requirements in a {selectedTone.toLowerCase()} tone…
+        <div style={{ background: "rgba(17, 17, 26, 0.75)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 16, padding: "44px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+          <AIRobotMascot size={80} isFloating={true} />
+          <h3 style={{ color: "#c9a84c", margin: 0, fontSize: 22, fontFamily: "'Cormorant Garamond', serif" }}>
+            Resume Required for Cover Letter
+          </h3>
+          <p style={{ color: "#9ca3af", margin: 0, fontSize: 14, maxWidth: 500, lineHeight: 1.6 }}>
+            Please upload your resume to generate a personalized, tailored cover letter.
           </p>
-          <div style={{ width: "100%", maxWidth: 480, height: 6, background: "#1a1a2e", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
-            <div style={{ height: "100%", background: "linear-gradient(90deg, #c9a84c, #60a5fa)", width: "70%", borderRadius: 3, animation: "pulse 1.5s infinite" }} />
+          
+          <div 
+            style={{
+              border: "2px dashed #2a2a3e",
+              borderRadius: 12,
+              padding: "36px 20px",
+              width: "100%",
+              maxWidth: 480,
+              background: "rgba(255,255,255,0.01)",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onClick={() => document.getElementById("coverLetterResumeInput").click()}
+            onMouseOver={e => e.currentTarget.style.borderColor = "#c9a84c"}
+            onMouseOut={e => e.currentTarget.style.borderColor = "#2a2a3e"}
+          >
+            <span style={{ fontSize: 32, display: "block", marginBottom: 12 }}>📄</span>
+            <span style={{ fontSize: 13, color: "#888", display: "block" }}>
+              Click to browse or drag PDF/DOCX file here
+            </span>
+            <input 
+              id="coverLetterResumeInput" 
+              type="file" 
+              accept=".pdf,.docx" 
+              onChange={handleFileChange} 
+              style={{ display: "none" }} 
+            />
           </div>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{ opacity:0.6 } 50%{ opacity:1 } }`}</style>
+          
+          {uploadError && (
+            <p style={{ color: "#f87171", fontSize: 12, margin: 0 }}>
+              ⚠️ {uploadError}
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
+  if (loading) {
+    return <PremiumLoader title="Generating Cover Letter..." />;
+  }
+
   if (error) {
+    console.warn("[Cover Letter Failure Detail]:", error);
     return (
       <div style={{ flex: 1, padding: "36px 20px", maxWidth: 860, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         <button onClick={handleBack} style={{ background: "transparent", border: "1px solid #2a2a3e", color: "#c9a84c", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, marginBottom: 20 }}>
           ← Back
         </button>
-        <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 16, padding: "32px", textAlign: "center" }}>
-          <span style={{ fontSize: 36, display: "block", marginBottom: 10 }}>⚠️</span>
-          <h3 style={{ color: "#f87171", margin: "0 0 8px", fontSize: 20 }}>Cover Letter Generation Failed</h3>
-          <p style={{ color: "#d1d5db", margin: "0 0 18px", fontSize: 14 }}>{error}</p>
-          <button onClick={() => handleGenerateCoverLetter(selectedTone)} style={{ background: "linear-gradient(135deg,#c9a84c,#8b6914)", border: "none", color: "#000", padding: "10px 24px", borderRadius: 8, fontWeight: 700, cursor: "pointer", margin: "0 auto" }}>
-            🔄 Retry Generation
-          </button>
+        <div style={{ background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 16, padding: "40px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <AIRobotMascot size={70} isFloating={false} isGlowing={false} />
+          <h3 style={{ color: "#f87171", margin: 0, fontSize: 20 }}>We couldn't complete your request.</h3>
+          <p style={{ color: "#d1d5db", margin: 0, fontSize: 14 }}>This is usually temporary. Please try again.</p>
+          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+            <button 
+              onClick={() => handleGenerateCoverLetter(selectedTone)} 
+              style={{
+                background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                color: "#05050A",
+                border: "none",
+                borderRadius: "8px",
+                padding: "12px 24px",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: "14px",
+                letterSpacing: "0.5px",
+                fontFamily: "'DM Sans', sans-serif"
+              }}
+            >
+              Try Again
+            </button>
+            <button 
+              onClick={handleBack} 
+              style={{
+                background: "transparent",
+                border: "1px solid #2a2a3e",
+                color: "#9ca3af",
+                cursor: "pointer",
+                padding: "12px 24px",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 600
+              }}
+            >
+              Back
+            </button>
+          </div>
         </div>
       </div>
     );

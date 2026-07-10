@@ -20,8 +20,8 @@ export default function DiffViewer({ originalText = "", optimizedText = "" }) {
 
   return (
     <div style={{
-      fontSize: 13,
-      lineHeight: 1.7,
+      fontSize: 12,
+      lineHeight: 1.6,
       color: "#e2e8f0",
       fontFamily: "'DM Sans', system-ui, sans-serif",
     }}>
@@ -37,7 +37,7 @@ export default function DiffViewer({ originalText = "", optimizedText = "" }) {
                 background: "rgba(16,185,129,0.18)",
                 color: "#34d399",
                 border: "1px solid rgba(16,185,129,0.35)",
-                padding: "2px 5px",
+                padding: "1px 4px",
                 borderRadius: 4,
                 fontWeight: 600,
                 margin: "0 1px",

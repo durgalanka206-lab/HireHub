@@ -149,7 +149,13 @@ async function generateInterviewPrep(user, jobId) {
   let useFallback = false;
   try {
     const provider = getAIProvider();
-    rawResponse = await provider.generateContent(prompt);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Gemini API call timed out")), 15000)
+    );
+    rawResponse = await Promise.race([
+      provider.generateContent(prompt),
+      timeoutPromise
+    ]);
   } catch (err) {
     console.error("[AI Provider Error] generateContent failed, falling back to mock questions:", err.message);
     useFallback = true;
@@ -193,7 +199,13 @@ async function evaluateAnswer(question, userAnswer, idealAnswer) {
   let useFallback = false;
   try {
     const provider = getAIProvider();
-    rawResponse = await provider.generateContent(prompt);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Gemini API call timed out")), 15000)
+    );
+    rawResponse = await Promise.race([
+      provider.generateContent(prompt),
+      timeoutPromise
+    ]);
   } catch (err) {
     console.error("[AI Provider Error] evaluateAnswer failed, using default evaluation:", err.message);
     useFallback = true;

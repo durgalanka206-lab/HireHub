@@ -29,7 +29,7 @@ function getAIProvider() {
 
   switch (providerType) {
     case "gemini":
-      _instance = new GeminiProvider(process.env.GEMINI_API_KEY);
+      _instance = new GeminiProvider(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
       break;
 
     // Prepared for future LLM providers:
